@@ -279,13 +279,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** S
 - **Tujuan:** menetapkan aturan domain booking sebelum implementasi slot dan UI.
 - **Dependensi:** T-008.
-- **Scope:** definisi status booking, transisi status, timezone Asia/Jakarta, durasi, jeda, provider, batas tanggal pemesanan, dan semantik “permintaan diterima” versus “dikonfirmasi”.
+- **Scope:** status D-05 (pending, confirmed, cancelled, completed, no_show) dan status yang memblokir slot; transisi D-03; timezone Asia/Jakarta; interval [mulai, mulai + durasi + jeda); provider otomatis menurut priority (D-04); aturan booking_rules D-06: slot step 30 menit, minimal notice 3 jam, maksimal 30 hari, maksimal dua booking aktif per WA, tanpa pembatalan mandiri dan tanpa expiry otomatis pending; pending >24 jam disorot privat; pesan WhatsApp default netral dan dapat diedit.
 - **Di luar scope:** tampilan halaman.
 - **Kemungkinan file:** domain types, dokumentasi domain, unit tests.
 - **Acceptance criteria:**
-  - [ ] Status dan transisinya terdokumentasi serta tervalidasi.
+  - [ ] Status, transisi D-03, dan status pemblokir D-05 terdokumentasi serta tervalidasi.
+  - [ ] Provider dipilih otomatis dari provider aktif yang kosong menurut priority; pelanggan tidak memilih provider.
+  - [ ] Aturan D-06 tercatat sebagai nilai awal booking_rules.
   - [ ] Request baru tidak dianggap confirmed secara otomatis.
-  - [ ] Aturan timezone dan interval booking eksplisit.
+  - [ ] Aturan timezone, interval terpakai [mulai, mulai + durasi + jeda), slot step, min notice, max advance, dan limit dua booking aktif/WA eksplisit.
   - [ ] Edge case pembatalan/perubahan jadwal dicatat.
 - **Tes:** unit tests untuk validasi status/transisi dan aturan waktu.
 - **Laporan:** `docs/reports/T-009-booking-contract.md`.
@@ -316,7 +318,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menghitung slot yang tersedia berdasarkan aturan operasional.
 - **Dependensi:** T-009, T-010.
-- **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query blocked maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
+- **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query blocked maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; interval terpakai adalah [mulai, mulai + durasi + jeda); tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
 - **Di luar scope:** UI booking dan notifikasi.
 - **Kemungkinan file:** domain service slot, query/function DB, unit/integration tests.
 - **Acceptance criteria:**
@@ -347,6 +349,8 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Aturan langkah 30 menit, minimal 3 jam, maksimal 30 hari, dan pending tanpa expiry otomatis ditegakkan.
   - [ ] Dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
   - [ ] Nomor WA dinormalisasi dengan satu aturan konsisten.
+  - [ ] Maksimal dua booking aktif pending/confirmed yang belum lewat per WA diterapkan atomik.
+  - [ ] Fungsi hanya mengembalikan created, slot_taken, invalid, atau limit_reached.
   - [ ] Response tidak mengungkap detail booking pihak lain.
 - **Tes:** integration test concurrency dan invalid input pada PostgreSQL; verify.
 - **Laporan:** `docs/reports/T-012-booking-create.md`.
@@ -624,13 +628,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** memberi pemilik kendali atas pengaturan operasional booking.
 - **Dependensi:** T-019, T-010, T-011, T-012.
-- **Scope:** CRUD treatment, provider, jam kerja, time_off, dan booking_rules melalui grant app_private D-03; provider priority; is_active untuk menonaktifkan; validasi jadwal/durasi/jeda; public config tetap melalui tiga fungsi D-02.
+- **Scope:** create/read/update treatment, provider, jam kerja, time_off, dan booking_rules melalui grant app_private D-03; tanpa hard DELETE, gunakan is_active untuk menonaktifkan; provider priority; validasi jadwal/durasi/jeda; kelola pesan pembuka WhatsApp default netral; public config tetap melalui tiga fungsi D-02.
 - **Di luar scope:** inventory, kasir, komisi.
 - **Kemungkinan file:** settings service/pages, migrations bila diperlukan, tests.
 - **Acceptance criteria:**
   - [ ] Hanya akun privat dapat mengubah pengaturan.
   - [ ] Pengaturan mencakup treatments, providers, working_hours, time_off, booking_rules.
   - [ ] app_private hanya INSERT/UPDATE tanpa DELETE pada tabel konfigurasi; nonaktifkan entitas melalui is_active.
+  - [ ] Pesan pembuka WhatsApp memiliki default netral dan dapat diubah tanpa deploy.
   - [ ] Tidak ada DML langsung app_private pada booking.bookings.
   - [ ] Validasi mencegah durasi/jam kerja invalid.
   - [ ] Public booking membaca konfigurasi melalui interface publik yang dibatasi.
