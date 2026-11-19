@@ -384,11 +384,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** memastikan area privat hanya disajikan pada hostname privat.
 - **Dependensi:** T-008, T-015.
-- **Scope:** konfigurasi host/origin yang tervalidasi; route group privat; penolakan route privat pada hostname booking; trusted host/proxy handling.
+- **Scope:** route/mode guard untuk dua instance dari satu codebase/image; `web-public` (`APP_MODE=public`) hanya melayani route booking dan mengembalikan 404 untuk route privat; `web-private` (`APP_MODE=private`) hanya melayani route privat dan mengembalikan 404 untuk route publik; host guard allowlist sebagai lapisan kedua; trusted host/proxy handling.
 - **Di luar scope:** konfigurasi Cloudflare produksi.
 - **Kemungkinan file:** middleware/server host guard, route groups, tests, docs.
 - **Acceptance criteria:**
-  - [ ] Route privat menolak request dari hostname booking.
+  - [ ] `web-public` mengembalikan 404 untuk seluruh route privat pada lapisan routing.
+  - [ ] `web-private` mengembalikan 404 untuk seluruh route publik pada lapisan routing.
+  - [ ] Host guard allowlist memvalidasi hostname sesuai mode instance.
+  - [ ] Kedua service memakai satu image/codebase yang sama dengan APP_MODE terpisah.
   - [ ] Pemeriksaan dilakukan di server, bukan hanya menyembunyikan link.
   - [ ] Host header tidak dipercaya tanpa validasi.
   - [ ] Test mencakup hostname yang diizinkan dan ditolak.
@@ -538,13 +541,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menampilkan booking untuk pemilik dan istri.
 - **Dependensi:** T-019, T-012.
-- **Scope:** daftar booking dan filter tanggal/status; detail yang diperlukan; baca melalui `app_private`; jangan mengubah data booking dari jalur publik.
+- **Scope:** daftar booking dan filter tanggal/status; detail yang diperlukan; baca melalui `app_private`; sorot booking berstatus pending yang berumur lebih dari 24 jam; jangan mengubah data booking dari jalur publik.
 - **Di luar scope:** integrasi kalender eksternal.
 - **Kemungkinan file:** booking private repository, dashboard pages, tests.
 - **Acceptance criteria:**
   - [ ] Hanya dua akun privat dapat melihat daftar.
   - [ ] Data berasal dari schema booking melalui koneksi privat.
   - [ ] Filter tanggal/status berjalan di server.
+  - [ ] Booking pending yang berumur lebih dari 24 jam ditonjolkan; pending tidak kedaluwarsa otomatis.
   - [ ] Tidak ada data booking privat yang bocor ke public response.
 - **Tes:** integration query; authorization tests; UI tests; verify.
 - **Laporan:** `docs/reports/T-024-private-booking-list.md`.
@@ -556,15 +560,17 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menghubungkan alur booking ke proses kerja manual pemilik.
 - **Dependensi:** T-020, T-021, T-024.
-- **Scope:** tombol konfirmasi manual hanya setelah kontrak hak perubahan status booking pada PRD K-07 disetujui; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil identitas dasar saja. Pengisian data kulit/kunjungan tetap melewati consent gate T-021/T-022.
+- **Scope:** tombol konfirmasi manual memanggil `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)` melalui app_private; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil identitas dasar saja. Pengisian data kulit/kunjungan tetap melewati consent gate T-021/T-022.
 - **Di luar scope:** WhatsApp API, pengiriman otomatis, auto-merge profil.
 - **Kemungkinan file:** booking actions, customer matching service, WhatsApp link helper, UI, tests.
 - **Acceptance criteria:**
   - [ ] Link WhatsApp dibuat dari nomor yang sudah dinormalisasi dan pesan yang di-encode dengan benar.
   - [ ] Pesan pembuka dapat diedit dari pengaturan privat.
   - [ ] Pencocokan WA dilakukan di server dan hanya pada area privat.
-  - [ ] Status booking tidak diubah melalui UPDATE tabel langsung; gunakan hanya kontrak fungsi terbatas yang disetujui pemilik.
-  - [ ] Jika keputusan K-07 belum disetujui, tombol/aksi perubahan status berstatus BLOCKED dan task tidak boleh mengklaim konfirmasi booking selesai.
+  - [ ] Status booking hanya diubah melalui fungsi `booking.set_booking_status`; tidak ada DML langsung ke `booking.bookings`.
+  - [ ] Hanya transisi pending → confirmed/cancelled dan confirmed → cancelled/completed/no_show yang diterima.
+  - [ ] completed/no_show hanya dapat ditetapkan setelah starts_at lewat.
+  - [ ] Setiap transisi menghasilkan baris `booking.status_events` dengan actor dan waktu.
   - [ ] Jika ada kecocokan, pengguna dapat membuka profil yang sesuai.
   - [ ] Jika tidak ada kecocokan, pembuatan profil memerlukan tindakan eksplisit.
   - [ ] Tidak ada penggabungan otomatis yang berisiko menyatukan dua orang berbeda.
@@ -578,11 +584,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** memberi pemilik kendali atas pengaturan operasional booking.
 - **Dependensi:** T-019, T-010, T-011, T-012.
-- **Scope:** CRUD treatment, dua provider, jam kerja, durasi, jeda; validasi agar perubahan tidak membuat jadwal tidak masuk akal; public config tetap melalui kontrak aman.
+- **Scope:** CRUD treatment, provider, jam kerja, time_off, dan booking_rules melalui grant app_private D-03; provider priority; is_active untuk menonaktifkan; validasi jadwal/durasi/jeda; public config tetap melalui tiga fungsi D-02.
 - **Di luar scope:** inventory, kasir, komisi.
 - **Kemungkinan file:** settings service/pages, migrations bila diperlukan, tests.
 - **Acceptance criteria:**
   - [ ] Hanya akun privat dapat mengubah pengaturan.
+  - [ ] Pengaturan mencakup treatments, providers, working_hours, time_off, booking_rules.
+  - [ ] app_private hanya INSERT/UPDATE tanpa DELETE pada tabel konfigurasi; nonaktifkan entitas melalui is_active.
+  - [ ] Tidak ada DML langsung app_private pada booking.bookings.
   - [ ] Validasi mencegah durasi/jam kerja invalid.
   - [ ] Public booking membaca konfigurasi melalui interface publik yang dibatasi.
   - [ ] Perubahan tidak mengubah booking historis secara tidak sengaja.
@@ -643,12 +652,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyiapkan konfigurasi produksi yang terpisah dari development.
 - **Dependensi:** T-028.
-- **Scope:** audit konfigurasi; production Compose; restart policy `unless-stopped`; healthcheck; volume persisten; least privilege; pengaturan log; dokumentasi konfigurasi.
+- **Scope:** audit konfigurasi; production Compose dengan service `web-public` dan `web-private` dari satu image yang sama dengan APP_MODE berbeda, plus PostgreSQL; restart policy `unless-stopped`; healthcheck; volume persisten; least privilege; pengaturan log; dokumentasi konfigurasi.
 - **Di luar scope:** membuka port router atau menanam secret produksi di repo.
 - **Kemungkinan file:** `compose.prod.yaml` atau konfigurasi Compose terpisah, Dockerfile, docs/deployment.
 - **Acceptance criteria:**
   - [ ] Development dan production configuration terpisah.
-  - [ ] Service memiliki restart policy yang sesuai.
+  - [ ] `web-public`, `web-private`, dan PostgreSQL memiliki restart policy yang sesuai.
+  - [ ] `web-public` hanya menerima app_public dan CAPTCHA secret serta menolak secret privat.
+  - [ ] `web-private` hanya menerima app_private dan session secret.
+  - [ ] Kedua service app menggunakan image yang sama.
   - [ ] Database memakai volume persisten.
   - [ ] Secret dipasok dari environment/secret file di host, tidak dikomit.
   - [ ] Tidak ada port router yang perlu dibuka.
@@ -682,12 +694,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menghubungkan hostname publik dan privat ke service yang tepat tanpa port forwarding.
 - **Dependensi:** T-016, T-030.
-- **Scope:** konfigurasi Tunnel yang mengarahkan `booking.<domain>` dan `rekam.<domain>` ke **instance aplikasi Next.js yang sama**; host guard aplikasi membatasi route yang boleh dilayani pada masing-masing hostname; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini. Jangan membuat aplikasi kedua, fork, atau deployment app terpisah.
+- **Scope:** konfigurasi Tunnel yang mengarahkan `booking.<domain>` ke service `web-public` dan `rekam.<domain>` ke service `web-private`; keduanya dua instance dari satu codebase dan satu image Docker dengan APP_MODE berbeda; host guard aplikasi membatasi route pada masing-masing mode; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini. Jangan membuat fork atau codebase aplikasi terpisah.
 - **Di luar scope:** menganggap Tunnel sebagai autentikasi aplikasi.
 - **Kemungkinan file:** deployment docs dan konfigurasi contoh tanpa token.
 - **Acceptance criteria:**
   - [ ] Tidak ada token Tunnel dalam repository.
-  - [ ] Kedua hostname menuju satu aplikasi Next.js/instance yang sama.
+  - [ ] `booking.<domain>` menuju service web-public (`APP_MODE=public`).
+  - [ ] `rekam.<domain>` menuju service web-private (`APP_MODE=private`).
+  - [ ] Kedua service berasal dari image Docker yang sama, tetapi berjalan sebagai dua instance terpisah.
   - [ ] Hostname booking hanya menyajikan halaman/endpoint publik.
   - [ ] Hostname rekam menuju boundary privat.
   - [ ] Tidak ada port router yang diekspos.
