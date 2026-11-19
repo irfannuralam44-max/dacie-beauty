@@ -48,7 +48,8 @@ Uji dengan dua transaksi/request bersamaan. Hasil yang benar: paling banyak satu
 - Pool privat hanya dibuat dari credential `app_private`.
 - Jangan membuat helper generik yang memungkinkan request memilih nama role atau pool.
 - Jangan mengimpor koneksi privat dari modul yang dapat dipanggil route publik.
-- Jangan memberikan akses SELECT tabel konfigurasi kepada role publik tanpa keputusan eksplisit. Jika halaman publik memerlukan data treatment/jam kerja, eskalasi kontrak fungsi pembacaan konfigurasi non-sensitif sesuai Catatan keberatan PRD.
+- Jangan memberikan akses SELECT tabel konfigurasi kepada role publik tanpa keputusan eksplisit. Jika halaman publik memerlukan data treatment/jam kerja, eskalasi kontrak fungsi pembacaan konfigurasi non-sensitif sesuai Catatan keberatan PRD K-02; task implementasi tetap BLOCKED sampai pemilik menyetujui.
+- Jangan memberi `app_private` UPDATE langsung pada tabel booking untuk konfirmasi status. Eskalasi sesuai PRD K-07; jika disetujui, implementasikan fungsi transisi status terbatas dan uji transisi yang diizinkan.
 
 ## Contoh pemeriksaan privilege
 
