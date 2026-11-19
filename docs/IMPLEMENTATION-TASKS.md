@@ -340,7 +340,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menyimpan booking secara aman dan mencegah double booking.
 - **Dependensi:** T-005, T-006, T-009, T-011.
-- **Scope:** pembuatan booking hanya melalui `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; normalisasi ulang WA; validasi aturan D-06; provider otomatis berdasarkan priority; constraint/locking untuk konkurensi; response hanya kode hasil yang ditentukan.
+- **Scope:** pembuatan booking hanya melalui `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; normalisasi ulang WA; validasi aturan D-06; provider otomatis berdasarkan priority; constraint database untuk mencegah overlap pada provider dan rentang (misalnya exclusion constraint); penanganan request bersamaan; response hanya kode hasil yang ditentukan. Ketersediaan btree_gist dan hak membuat extension diverifikasi saat discovery, tidak diasumsikan.
 - **Di luar scope:** integrasi WhatsApp API atau konfirmasi otomatis.
 - **Kemungkinan file:** booking service/repository, route handler, SQL migration tambahan, integration tests.
 - **Acceptance criteria:**
@@ -348,7 +348,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Request memakai role `app_public` dan hanya memanggil fungsi `create_booking`; tidak ada INSERT langsung ke tabel booking.
   - [ ] Batas maksimal dua booking aktif pending/confirmed dan belum lewat per WA ditegakkan di fungsi/database.
   - [ ] Aturan langkah 30 menit, minimal 3 jam, maksimal 30 hari, dan pending tanpa expiry otomatis ditegakkan.
-  - [ ] Dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
+  - [ ] Constraint database mencegah overlap pada provider/rentang; dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
   - [ ] Nomor WA dinormalisasi dengan satu aturan konsisten.
   - [ ] Maksimal dua booking aktif pending/confirmed yang belum lewat per WA diterapkan atomik.
   - [ ] Fungsi hanya mengembalikan created, slot_taken, invalid, atau limit_reached.
