@@ -126,13 +126,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** membuat skema `booking` dan `records` serta sistem migrasi SQL berversi.
 - **Dependensi:** T-002, T-003.
-- **Scope:** pilih satu mekanisme migrasi ringan; buat schema terpisah; tabel awal sesuai model data PRD; constraint, index, foreign key, timestamp; dokumentasikan cara apply dan status migrasi.
+- **Scope:** pilih satu mekanisme migrasi ringan; buat schema terpisah; tabel booking sesuai PRD termasuk treatments, providers dengan priority/is_active, working_hours, time_off, satu-baris booking_rules, bookings dengan status pending/confirmed/cancelled/completed/no_show, dan status_events; tabel records sesuai PRD; constraint, index, foreign key yang tidak melanggar larangan FK lintas schema, timestamp; dokumentasikan cara apply dan status migrasi.
 - **Di luar scope:** UI CRUD dan data pelanggan nyata.
 - **Kemungkinan file:** `db/migrations/*`, skrip migrasi, `docs/database/*`, integration tests.
 - **Acceptance criteria:**
   - [ ] Database kosong dapat dibangun dari seluruh migrasi secara berurutan.
   - [ ] Schema `booking` dan `records` terpisah.
-  - [ ] Struktur tabel mencakup entitas awal PRD tanpa mengurangi field penting.
+  - [ ] Struktur tabel mencakup treatments, providers.priority/is_active, working_hours, time_off, booking_rules satu baris, bookings dengan status D-05, dan status_events tanpa FK lintas schema untuk actor_user_id.
+  - [ ] Booking rules mendukung nilai awal D-06 dan dapat diperbarui dari area privat.
   - [ ] Constraint dan index yang diperlukan didefinisikan melalui migrasi.
   - [ ] Migrasi yang sudah diterapkan tidak diedit diam-diam; perubahan dibuat sebagai migrasi baru.
   - [ ] Tidak ada data pribadi nyata dalam seed/fixture.
