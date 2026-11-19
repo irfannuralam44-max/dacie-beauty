@@ -615,24 +615,24 @@ Bagian ini bukan izin untuk mengubah keputusan arsitektur. Item yang belum diket
 | A-05 | Versi stabil PostgreSQL dan Node.js LTS yang tepat belum dipilih | Verifikasi dokumentasi resmi saat Fase 0 |
 | A-06 | Versi Next.js, React, TypeScript, driver `pg`, library Argon2, Playwright, dan Gitleaks belum dikunci | Verifikasi kompatibilitas dan versi yang didukung; jangan menebak |
 | A-07 | Jam operasional, hari kerja, durasi tiap treatment, jeda antar sesi belum diberikan | Pemilik mengisi pengaturan awal sebelum uji booking |
-| A-08 | Cara pembagian booking kepada dua provider (pilih pelanggan atau auto-assign) belum ditentukan | Konfirmasi sebelum desain slot Fase 1 |
-| A-09 | Aturan status booking dan kapan slot dianggap terisi belum difinalkan | Tetapkan sebelum migrasi booking |
-| A-10 | Apakah pelanggan dapat membatalkan booking sendiri belum ditentukan | Asumsi awal: tidak; pembatalan ditangani internal |
+| A-08 | Cara pembagian booking kepada dua provider | **Diputuskan arsitek, 20 November 2026 — D-04: provider dipilih otomatis menurut priority.** |
+| A-09 | Aturan status booking dan kapan slot dianggap terisi | **Diputuskan arsitek, 20 November 2026 — D-05: status dan aturan pemblokiran slot.** |
+| A-10 | Apakah pelanggan dapat membatalkan booking sendiri | **Diputuskan arsitek, 20 November 2026 — D-06: tidak; pembatalan melalui WhatsApp ke pemilik.** |
 | A-11 | Teks persetujuan dan pemberitahuan privasi belum disediakan | Pemilik menyiapkan dan meminta tinjauan hukum |
 | A-12 | Masa retensi booking, profil, kunjungan, dan audit log belum ditentukan | Tinjauan hukum/operasional sebelum rilis |
 | A-13 | Prosedur pemulihan akun dan pergantian perangkat belum ditentukan | Buat runbook tanpa menambah akun |
 | A-14 | Spesifikasi mini PC, RAM, storage, UPS, dan kapasitas disk belum dipastikan | Audit perangkat sebelum deployment |
 | A-15 | Lokasi backup luar rumah dan pengelola kunci enkripsi belum ditentukan | Tetapkan sebelum rilis |
 | A-16 | Pilihan akhir runner test dan bentuk migrasi perlu diverifikasi terhadap kebutuhan repo | Discovery Fase 0; rekomendasi awal SQL berversi + `pg` |
-| A-17 | Kebijakan hari libur/cuti dan pengecualian jam kerja belum dirinci | Konfirmasi saat desain pengaturan |
-| A-18 | Pesan pembuka WhatsApp belum ditentukan | Gunakan teks default netral, dapat diubah dari area privat |
+| A-17 | Kebijakan hari libur/cuti dan pengecualian jam kerja | **Diputuskan arsitek, 20 November 2026 — D-06: tabel time_off per provider.** |
+| A-18 | Pesan pembuka WhatsApp | **Diputuskan arsitek, 20 November 2026 — D-06: default netral dan dapat diubah dari area privat.** |
 
 ## 16. Kriteria penerimaan PRD
 
 PRD dianggap siap menjadi acuan task ketika:
 
 - [x] Dua kebutuhan bisnis dipisahkan: booking publik dan rekam kulit privat.
-- [x] Keputusan satu repo privat dan satu aplikasi Next.js dipertahankan.
+- [x] Keputusan satu repo privat, satu codebase dan satu image Docker yang dijalankan sebagai dua instance dipertahankan.
 - [x] Pemisahan skema `booking` dan `records` dijelaskan.
 - [x] Dua role database dan larangan akses publik ke records dijelaskan.
 - [x] Dua hostname dan lapisan Cloudflare Access + login aplikasi dijelaskan.
@@ -646,72 +646,62 @@ PRD dianggap siap menjadi acuan task ketika:
 
 ## 17. Catatan keberatan
 
-Bagian ini menyampaikan risiko/ketegangan teknis tanpa mengubah keputusan yang telah dikunci. Pemilik/arsitek menentukan apakah akan menerima risiko atau mengeluarkan revisi arsitektur resmi.
+Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan. Keputusan yang telah ditetapkan arsitek ditandai statusnya; teks keberatan historis dipertahankan sebagai konteks, bukan keputusan yang masih terbuka.
 
 ### K-01 — Satu proses aplikasi memegang dua kredensial database
 
-**Keputusan terkunci:** satu aplikasi Next.js melayani dua hostname; rute publik memakai `app_public`, rute privat memakai `app_private`.
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-01**. Satu codebase dan satu image Docker dijalankan sebagai dua instance terisolasi: `web-public` hanya memiliki kredensial/secret publik; `web-private` hanya memiliki kredensial/secret privat. Startup publik gagal bila menemukan secret privat.
 
-**Keberatan:** bila kedua credential tersedia dalam environment proses Next.js yang sama, kompromi pada proses atau bug server-side di jalur publik dapat berpotensi membuka akses ke credential privat. Pemisahan role database melindungi dari kesalahan query biasa, tetapi tidak sepenuhnya mengisolasi dua trust domain dalam satu proses.
+**Riwayat keberatan:** dua credential dalam satu proses dapat memperbesar dampak kompromi. Keputusan dua instance mengurangi paparan credential silang.
 
-**Mitigasi yang tidak mengubah keputusan:** modul koneksi privat hanya boleh diimpor dari modul server privat; boundary import dan host diperiksa; tidak ada fungsi publik yang menerima pilihan role dari request; secrets tidak pernah dikirim ke client; audit dependency dan route handler; pertimbangkan isolasi proses/credential melalui deployment topology hanya jika arsitek menyetujui perubahan resmi.
+### K-02 — Hak app_public untuk membaca konfigurasi booking
 
-### K-02 — Hak `app_public` mungkin tidak cukup untuk membaca konfigurasi booking
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-02**. `app_public` tanpa hak tabel; akses publik hanya melalui `get_public_config()`, `get_blocked_intervals()`, dan `create_booking()` dengan privilege fungsi yang dibatasi ketat.
 
-**Keputusan terkunci:** `app_public` hanya boleh menambah booking dan memanggil fungsi yang mengembalikan jam terisi tanpa nama/kontak; role ini tidak memiliki hak ke records.
+**Riwayat keberatan:** halaman publik memerlukan treatment aktif, jam kerja, durasi, jeda, time_off, dan aturan booking. Memberikan SELECT tabel langsung tidak diperbolehkan; fungsi terbatas memenuhi kebutuhan tanpa grant tabel.
 
-**Keberatan:** halaman publik memerlukan pilihan treatment aktif, jam kerja, durasi treatment, dan informasi yang cukup untuk menghitung slot. Hak yang disebutkan secara literal tidak memberi izin `SELECT` ke tabel konfigurasi. Di sisi lain, konfigurasi tersebut dapat berubah dari area privat. Jika fungsi database yang aman tidak disediakan untuk membaca konfigurasi non-sensitif, implementasi dapat terdorong memakai konfigurasi statis yang mudah tidak sinkron.
+### K-03 — Kontrak fungsi slot publik
 
-**Catatan:** jangan diam-diam memberikan `SELECT` tabel konfigurasi kepada `app_public`. Arsitek perlu menentukan apakah fungsi database terbatas untuk membaca konfigurasi publik diperbolehkan sebagai penjabaran hak minimum, atau konfigurasi publik disediakan melalui mekanisme lain yang disetujui.
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-02** dan **D-05**. Output `get_blocked_intervals` dibatasi pada provider_id dan interval waktu untuk status pending/confirmed, maksimal rentang 35 hari; tanpa ID booking, nama, nomor, atau status.
 
-### K-03 — Fungsi slot “jam terisi” perlu definisi output yang presisi
-
-**Keputusan terkunci:** fungsi publik hanya mengembalikan jam yang sudah terisi tanpa nama atau kontak.
-
-**Keberatan:** untuk menghitung slot kosong, server perlu tahu provider, durasi, jam kerja, jeda, status booking yang memblokir, serta rentang waktu. Output harus cukup untuk menghitung ketersediaan tanpa mengungkap pola operasional atau informasi pribadi lebih dari yang diperlukan. Kontrak fungsi perlu menetapkan parameter, granularitas waktu, status yang dihitung, dan aturan zona waktu.
-
-**Mitigasi:** spesifikasi fungsi dan test kebocoran output menjadi bagian task database/booking; jangan mengembalikan row booking mentah.
+**Riwayat keberatan:** fungsi slot harus memberi data cukup untuk menghitung ketersediaan tanpa mengembalikan row booking mentah atau informasi pribadi.
 
 ### K-04 — WhatsApp sebagai penghubung dua skema memiliki risiko salah taut
 
-**Keputusan terkunci:** penghubung booking dan records adalah nomor WhatsApp ternormalisasi.
+**Status:** Tetap menjadi catatan risiko; keputusan dasar nomor WhatsApp ternormalisasi sebagai penghubung logis dipertahankan.
 
-**Keberatan:** nomor dapat berubah, didaur ulang, dipakai bersama keluarga, atau salah input. Nomor unik membantu pencarian tetapi tidak membuktikan bahwa orang yang sedang berkomunikasi adalah pemilik rekam tertentu.
+**Keberatan:** nomor dapat berubah, didaur ulang, dipakai bersama keluarga, atau salah input. Nomor unik tidak membuktikan bahwa orang yang sedang berkomunikasi adalah pemilik rekam tertentu.
 
-**Mitigasi:** staf memverifikasi identitas secara operasional sebelum membuka/membuat rekam; nomor tidak boleh menjadi faktor autentikasi; perubahan nomor harus melalui prosedur privat dan tercatat.
+**Mitigasi:** staf memverifikasi identitas secara operasional; nomor bukan faktor autentikasi; perubahan nomor melalui prosedur privat dan tercatat.
 
 ### K-05 — Persetujuan dan penghapusan membutuhkan kebijakan yang lebih spesifik
 
-**Keputusan terkunci:** catat tanggal dan versi persetujuan; sediakan hapus atau anonimisasi.
+**Status:** Tetap menjadi catatan risiko; teks consent, retensi, dan prosedur hak subjek data tetap memerlukan tinjauan hukum/privasi.
 
-**Keberatan:** tanggal dan versi saja belum tentu cukup sebagai bukti persetujuan yang memadai. Penghapusan juga dapat berbenturan dengan kewajiban retensi atau kebutuhan audit.
+**Keberatan:** tanggal dan versi saja belum tentu cukup sebagai bukti persetujuan; penghapusan dapat berbenturan dengan kewajiban retensi atau kebutuhan audit.
 
-**Mitigasi:** minta tinjauan hukum atas teks, bukti, masa retensi, dan prosedur pemenuhan hak sebelum data nyata digunakan. Jangan mengklaim kepatuhan UU PDP hanya karena field consent tersedia.
+**Mitigasi:** tinjau teks, bukti, masa retensi, dan prosedur sebelum data nyata digunakan. Jangan mengklaim kepatuhan UU PDP.
 
 ### K-06 — Satu aplikasi dan dua hostname perlu proteksi host yang ketat
 
-**Keputusan terkunci:** satu aplikasi dengan dua hostname; rute privat tidak boleh dilayani pada hostname booking.
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-01**. Satu codebase dan image Docker dijalankan sebagai dua instance; Tunnel mengarahkan masing-masing hostname ke service yang sesuai. Tiap instance 404 untuk route mode lain dan memakai host guard allowlist sebagai lapisan kedua.
 
-**Keberatan:** pemisahan UI atau redirect bukan kontrol keamanan yang cukup. Route handler, server action, middleware, asset/API internal, dan variasi host dapat menjadi jalur tidak sengaja.
+**Riwayat keberatan:** pemisahan UI atau redirect saja tidak cukup; route handler, server action, API, dan variasi host perlu ditolak secara eksplisit.
 
-**Mitigasi:** validasi host di server, allowlist eksplisit, blok akses lintas host, uji semua endpoint privat dari hostname publik, dan pastikan Cloudflare Access bukan satu-satunya lapisan autentikasi.
+### K-07 — Hak app_private untuk mengubah status booking
 
----
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` tidak memiliki DML langsung pada `booking.bookings`; perubahan status hanya melalui `booking.set_booking_status` dengan transisi yang diizinkan dan pencatatan `status_events`.
 
-### K-07 — Aksi konfirmasi booking membutuhkan hak tulis yang belum didefinisikan
+**Riwayat keberatan:** hak baca booking tidak otomatis memberi hak ubah status; UPDATE tabel luas akan memperbesar privilege.
 
-**Keputusan terkunci:** role `app_private` digunakan untuk area privat, membaca booking, dan mengakses `records`. Area privat juga harus menyediakan aksi konfirmasi/perubahan status booking.
+### K-08 — Hak app_private untuk mengelola tabel konfigurasi booking
 
-**Konflik:** membaca booking tidak otomatis memberi hak untuk mengubah status. Memberi `UPDATE` langsung pada tabel `booking.bookings` kepada role `app_private` akan memperluas privilege dari keputusan awal.
-
-**Rekomendasi aman untuk diputuskan pemilik:** pertahankan pembacaan booking melalui `app_private`, lalu sediakan satu fungsi database terbatas untuk transisi status yang diizinkan (misalnya pending → confirmed/cancelled), dengan validasi transisi, audit, argumen minimum, owner terbatas, `search_path` aman, dan EXECUTE hanya untuk `app_private`. Jangan memberi UPDATE tabel secara luas. Ini tetap memerlukan persetujuan eksplisit pemilik sebelum implementasi.
-
-**Gerbang:** task implementasi tombol konfirmasi booking tidak boleh memberikan privilege tulis langsung atau mengarang kontrak fungsi sebelum keputusan ini disetujui.
-
----
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` memperoleh SELECT seluruh tabel booking dan INSERT/UPDATE (tanpa DELETE) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`. Gunakan `is_active` untuk menonaktifkan entitas; role ini tidak memperoleh DML langsung pada `bookings`.
 
 ## 18. Riwayat perubahan
 
 | Versi | Tanggal | Perubahan |
 |---|---|---|
-| 1.0 | 19 November 2026 | PRD awal berdasarkan spesifikasi dan keputusan arsitektur pemilik |\n| 1.1 | 19 November 2026 | Review kesesuaian: mencatat kontrak privilege konfirmasi booking sebagai keputusan terbuka |
+| 1.0 | 19 November 2026 | PRD awal berdasarkan spesifikasi dan keputusan arsitektur pemilik |
+| 1.1 | 19 November 2026 | Review kesesuaian awal |
+| 1.2 | 20 November 2026 | Keputusan arsitek D-01 sampai D-10: dua instance, kontrak privilege/fungsi booking, aturan booking, hardening, dan task tambahan |
