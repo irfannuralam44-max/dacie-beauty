@@ -1,15 +1,13 @@
 # Review Kesesuaian Spesifikasi Dacie Beauty
 
 **Tanggal:** 19 November 2026  
-**Status:** Review dokumentasi selesai; belum ada implementasi aplikasi  
+**Status:** Review historis DOC-007; superseded oleh keputusan arsitek DOC-008 pada 20 November 2026; belum ada implementasi aplikasi  
 **Branch hasil review:** `docs/T-007-spec-alignment`  
 **Baseline:** spesifikasi awal pemilik yang dirangkum dalam PRD dan keputusan arsitektur terkunci.
 
 ## 1. Kesimpulan
 
-Dokumentasi sudah **sebagian besar selaras** dengan spesifikasi awal. Arsitektur utama dipertahankan: satu repository privat, satu aplikasi Next.js, dua hostname, PostgreSQL dengan schema `booking` dan `records`, role `app_public` dan `app_private`, dua akun privat, booking lima field, data kulit privat, Docker Compose di Linux, Cloudflare Tunnel/Access, pengujian lokal, dan tidak ada GitHub Actions.
-
-Review menemukan beberapa celah yang dapat menyebabkan agent mengambil keputusan yang tidak sesuai atau melemahkan batas keamanan. Koreksi dokumentasi dilakukan pada branch ini. Dua kontrak privilege tetap **belum diputuskan** dan sengaja tidak diubah menjadi keputusan otomatis.
+Dokumen ini merekam review DOC-007 sebelum keputusan arsitek. Pada DOC-008, arsitek menetapkan satu codebase dan satu image Docker yang dijalankan sebagai dua instance terpisah; kontrak privilege D-02/D-03; aturan booking D-04 sampai D-06; pemberitahuan privasi D-07; hardening D-08; aturan Git D-09; dan task tambahan D-10. K-02 dan K-07 yang dahulu terbuka telah diputuskan melalui D-02 dan D-03. Gunakan PRD versi 1.2, AGENTS.md, IMPLEMENTATION-PLAN.md, IMPLEMENTATION-TASKS.md, skills, dan checklist pada branch DOC-008 sebagai sumber kebenaran terbaru.
 
 Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada test kode yang dijalankan, dan tidak ada klaim implementasi sudah aman.
 
@@ -32,7 +30,7 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 
 ### R-02 — Akses konfigurasi booking publik berpotensi memperluas hak app_public
 
-**Prioritas:** P1 — dibatasi, menunggu keputusan pemilik.
+**Status historis:** ditutup oleh keputusan arsitek D-02 pada DOC-008. Konfigurasi publik dibaca melalui get_public_config tanpa privilege tabel bagi app_public.
 
 **Temuan awal:** keputusan awal membatasi `app_public` pada pembuatan booking dan fungsi untuk membaca waktu terisi tanpa nama/kontak. Namun halaman booking membutuhkan daftar treatment aktif serta informasi durasi/jam kerja yang dapat berubah dari area privat. Task T-010 semula mengasumsikan fungsi/view tambahan dapat langsung dibuat.
 
@@ -46,7 +44,7 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 
 ### R-03 — Konfirmasi booking memerlukan hak perubahan status yang belum didefinisikan
 
-**Prioritas:** P1 — dibatasi, menunggu keputusan pemilik.
+**Status historis:** ditutup oleh keputusan arsitek D-03 pada DOC-008. Perubahan status menggunakan set_booking_status; app_private tidak memiliki DML langsung pada bookings.
 
 **Temuan awal:** spesifikasi meminta pemilik/istri dapat mengonfirmasi booking dari area privat, tetapi role `app_private` secara eksplisit ditetapkan untuk membaca booking dan mengakses `records`. Tidak ada kontrak yang menjelaskan bagaimana status booking dapat diubah.
 
@@ -133,12 +131,14 @@ Perbandingan GitHub pada saat review menunjukkan branch hasil review berada di d
 
 Langkah yang disarankan berikutnya adalah membuka Pull Request dari `docs/T-007-spec-alignment` ke `main`, meninjau dua keputusan terbuka K-02 dan K-07, lalu merge dokumentasi setelah pemilik menyetujuinya.
 
-## 6. Keputusan yang masih diperlukan dari pemilik
+## 6. Status keputusan setelah DOC-008
 
-1. **K-02 — Data konfigurasi booking publik:** apakah pemilik menyetujui satu fungsi database terbatas tambahan bagi `app_public` untuk membaca konfigurasi booking non-sensitif (treatment aktif/durasi dan informasi jadwal yang perlu ditampilkan)? Tanpa persetujuan, jangan menambah hak ini.
-2. **K-07 — Konfirmasi booking:** apakah pemilik menyetujui fungsi database terbatas untuk mengubah status booking dari area privat, tanpa memberikan UPDATE tabel booking secara luas kepada `app_private`?
+Keputusan yang dahulu diminta pada review DOC-007 kini ditetapkan arsitek dan dianggap disetujui pemilik melalui delegasi keputusan dalam prompt 20 November 2026:
 
-Kedua keputusan ini harus dicatat sebelum task terkait diimplementasikan. Semua keputusan arsitektur lain tetap dipertahankan.
+1. **K-02 — D-02:** tiga fungsi publik terbatas; app_public tanpa privilege tabel.
+2. **K-07/K-08 — D-03:** app_private membaca booking, mengelola tabel konfigurasi dengan INSERT/UPDATE tanpa DELETE, dan mengubah status hanya melalui fungsi set_booking_status.
+
+Rincian keputusan D-01 sampai D-10 berada pada PRD versi 1.2, backlog, dan rencana implementasi di branch DOC-008. Laporan DOC-007 ini tetap disimpan sebagai catatan historis dan tidak lagi menjadi sumber status keputusan.
 
 ---
 
