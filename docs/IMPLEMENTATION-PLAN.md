@@ -216,17 +216,18 @@ Fase 0 dinyatakan selesai hanya jika:
 
 | Urutan | Task | Area | Hasil yang diharapkan | Estimasi |
 |---:|---|---|---|---|
-| 3.1 | T-029 | Compose produksi | web-public, web-private, PostgreSQL; dua service app dari image sama, APP_MODE terpisah | M |
-| 3.2 | T-030 | Mini PC Linux | Deploy dan verifikasi dua instance serta database pada perangkat target | M |
-| 3.3 | T-031 | Cloudflare Tunnel | booking → web-public; rekam → web-private; tanpa port router | M |
-| 3.4 | T-032 | Cloudflare Access | Allowlist dua email untuk hostname privat; verifikasi batas aktual | M |
-| 3.5 | T-033 | Backup terenkripsi | Backup harian ke disk eksternal dan offsite | M |
-| 3.6 | T-040 | Monitoring dan alert | HTTP uptime booking eksternal dan peringatan backup gagal, tanpa PII | M |
-| 3.7 | T-034 | Restore drill | Pemulihan database dan aplikasi dari backup | L |
-| 3.8 | T-035 | Recovery listrik/server | Uji reboot/power recovery dan konsistensi database | M |
-| 3.9 | T-036 | Migrasi VPS | Panduan pindah Compose dan restore backup | S |
-| 3.10 | T-041 | Runbook akun/secret | Provisioning dua akun, recovery, pergantian perangkat, rotasi secret; wajib sebelum pilot | M |
-| 3.11 | T-037 | Pilot terbatas | Uji sintetis, audit akhir, keputusan go/no-go pemilik | M |
+| 3.1 | — | Audit kesiapan produksi | Checklist konfigurasi, threat/risk review, dependency dan secret review | M |
+| 3.2 | T-029 | Compose produksi | web-public, web-private, PostgreSQL; dua service app dari image sama, APP_MODE terpisah | M |
+| 3.3 | T-030 | Mini PC Linux | Deploy dan verifikasi dua instance serta database pada perangkat target | M |
+| 3.4 | T-031 | Cloudflare Tunnel | booking → web-public; rekam → web-private; tanpa port router | M |
+| 3.5 | T-032 | Cloudflare Access | Allowlist dua email untuk hostname privat; verifikasi batas aktual | M |
+| 3.6 | T-033 | Backup terenkripsi | Backup harian ke disk eksternal dan offsite | M |
+| 3.7 | T-040 | Monitoring dan alert | HTTP uptime booking eksternal dan peringatan backup gagal, tanpa PII | M |
+| 3.8 | T-034 | Restore drill | Pemulihan database dan aplikasi dari backup | L |
+| 3.9 | T-035 | Recovery listrik/server | Uji reboot/power recovery dan konsistensi database | M |
+| 3.10 | T-036 | Migrasi VPS | Panduan pindah Compose dan restore backup | S |
+| 3.11 | T-041 | Runbook akun/secret | Provisioning dua akun, recovery, pergantian perangkat, rotasi secret; wajib sebelum pilot | M |
+| 3.12 | T-037 | Pilot terbatas | Uji sintetis, audit akhir, keputusan go/no-go pemilik | M |
 
 ### Dependensi dan catatan
 
