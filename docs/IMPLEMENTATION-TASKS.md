@@ -64,7 +64,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** membuat kerangka aplikasi Next.js App Router + TypeScript sesuai stack PRD.
 - **Dependensi:** dokumentasi PRD dan AGENTS tersedia pada branch dasar.
-- **Scope:** inisialisasi aplikasi; struktur source minimal; konfigurasi TypeScript dan lint; halaman placeholder; README instruksi development; gunakan versi runtime/dependensi yang kompatibel dan catat versi aktual.
+- **Scope:** inisialisasi satu codebase Next.js App Router dan satu image Docker yang dapat dijalankan dengan `APP_MODE=public` atau `APP_MODE=private`; struktur source minimal; konfigurasi TypeScript/lint; placeholder route per mode; README; gunakan versi Next.js stabil yang sudah memuat perbaikan keamanan terbaru; verifikasi advisory resmi Next.js dan catat versi, URL sumber, serta tanggal pemeriksaan di laporan. Versi paket spesifik perlu diverifikasi.
 - **Di luar scope:** fitur booking, autentikasi, database schema final, desain visual final.
 - **Kemungkinan file:** `package.json`, lockfile, `tsconfig.json`, konfigurasi Next.js/lint, `src/app/*`, `README.md`.
 - **Acceptance criteria:**
@@ -73,6 +73,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] TypeScript dan lint aktif tanpa mematikan aturan secara global.
   - [ ] Tidak ada rahasia atau file environment aktual yang dikomit.
   - [ ] Struktur awal tidak mengunci aplikasi pada vendor hosting tertentu.
+  - [ ] Versi Next.js stabil dan advisory resmi keamanan terbaru diverifikasi serta URL/tanggal dicatat dalam laporan.
 - **Tes:** install bersih menggunakan package manager yang dipilih; lint; typecheck jika tersedia; build; `scripts/verify.sh` setelah tersedia.
 - **Laporan:** `docs/reports/T-001-app-bootstrap.md`.
 
@@ -83,11 +84,12 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyediakan lingkungan lokal berisi app dan PostgreSQL.
 - **Dependensi:** T-001.
-- **Scope:** Compose development; service PostgreSQL; volume persisten; healthcheck yang sesuai; konfigurasi port lokal; contoh environment tanpa kredensial nyata; instruksi start/stop.
+- **Scope:** Compose development dengan service `web-public`, `web-private`, dan PostgreSQL; kedua service aplikasi dibangun dari image yang sama tetapi memakai `APP_MODE` berbeda; volume persisten; healthcheck; konfigurasi port lokal; contoh environment tanpa kredensial nyata; instruksi start/stop.
 - **Di luar scope:** Cloudflare Tunnel, konfigurasi produksi, backup offsite.
 - **Kemungkinan file:** `compose.yaml`, `.env.example`, `.dockerignore`, `README.md`, konfigurasi container.
 - **Acceptance criteria:**
-  - [ ] App dan PostgreSQL dapat dijalankan melalui instruksi terdokumentasi.
+  - [ ] `web-public`, `web-private`, dan PostgreSQL dapat dijalankan melalui instruksi terdokumentasi.
+  - [ ] Kedua service aplikasi memakai image yang sama dengan `APP_MODE` berbeda.
   - [ ] Data database tetap ada setelah container direstart.
   - [ ] Kredensial lokal berasal dari environment, bukan hardcoded pada source.
   - [ ] Healthcheck membedakan service siap dan belum siap.
@@ -102,11 +104,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** S
 - **Tujuan:** memusatkan pembacaan konfigurasi dan mencegah aplikasi berjalan dengan konfigurasi penting yang tidak valid.
 - **Dependensi:** T-001.
-- **Scope:** schema validasi environment server; pemisahan variabel server-only dan variabel publik; dokumentasi nama/tujuan variabel; pesan error aman.
+- **Scope:** schema validasi environment server per `APP_MODE`; `public` hanya menerima `app_public` dan secret CAPTCHA, `private` hanya menerima `app_private` dan secret sesi; `web-public` wajib menolak startup bila menemukan credential atau secret privat; dokumentasi variabel dan pesan error aman.
 - **Di luar scope:** memasukkan secret produksi atau membangun secret manager.
 - **Kemungkinan file:** modul konfigurasi server, `.env.example`, README, unit tests.
 - **Acceptance criteria:**
-  - [ ] Variabel wajib divalidasi saat startup atau saat konfigurasi pertama kali digunakan.
+  - [ ] Variabel wajib divalidasi saat startup.
+  - [ ] `APP_MODE` hanya menerima `public` atau `private`.
+  - [ ] Mode public hanya menerima credential `app_public` dan secret CAPTCHA.
+  - [ ] Mode public gagal startup bila ada credential/secret privat (DB private atau session secret).
+  - [ ] Mode private hanya menerima credential `app_private` dan secret sesi.
   - [ ] Secret tidak diekspos melalui prefix/konfigurasi client.
   - [ ] Error tidak mencetak nilai secret.
   - [ ] Contoh env berisi placeholder, bukan nilai kredensial yang dapat digunakan.
@@ -179,11 +185,12 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** membuat satu entry point verifikasi lokal sesuai AGENTS.
 - **Dependensi:** T-001; integrasikan hasil T-004 sampai T-006.
-- **Scope:** unit test runner; integration test PostgreSQL; `scripts/verify.sh`; secret scanning lokal (misalnya gitleaks setelah ketersediaan/instalasi diverifikasi); exit code non-zero saat ada kegagalan; dokumentasi setup.
+- **Scope:** unit test runner; integration test PostgreSQL; `scripts/verify.sh`; secret scanning lokal; audit dependency (misalnya package manager audit atau tool yang dipilih setelah diverifikasi); exit code non-zero saat lint/test/secret scan/audit wajib gagal; dokumentasi setup.
 - **Di luar scope:** GitHub Actions atau CI remote.
 - **Kemungkinan file:** `scripts/verify.sh`, konfigurasi test, `tests/*`, README.
 - **Acceptance criteria:**
-  - [ ] Satu perintah menjalankan lint, test, dan secret scan.
+  - [ ] Satu perintah menjalankan lint, test, secret scan, dan audit dependency.
+  - [ ] Temuan dependency high atau critical menggagalkan verifikasi kecuali pengecualian tertulis yang disetujui dan dicatat di laporan.
   - [ ] Kegagalan salah satu tahap membuat script gagal.
   - [ ] Integration test berjalan terhadap PostgreSQL, bukan mock privilege.
   - [ ] Script tidak mencetak nilai secret.
