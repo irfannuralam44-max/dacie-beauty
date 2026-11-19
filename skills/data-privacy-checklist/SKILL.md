@@ -32,7 +32,8 @@ Wajib untuk setiap task yang menyentuh data pelanggan, booking, nomor WhatsApp, 
 - [ ] Tepat dua akun internal aktif sesuai kebijakan pemilik.
 
 ### D. Persetujuan dan transparansi
-- [ ] Sebelum pencatatan data kulit, staf mengikuti proses memperoleh persetujuan.
+- [ ] Profil identitas dasar (nama/WA) dapat dibuat sebelum consent bila diperlukan untuk alur booking.
+- [ ] Sebelum field kesehatan/kulit atau catatan kunjungan dibuat/diubah, consent harus sudah tercatat dan diverifikasi server-side.
 - [ ] Tanggal dan versi teks persetujuan dicatat.
 - [ ] Versi teks persetujuan dapat ditelusuri.
 - [ ] UI tidak mengklaim kepatuhan hukum secara otomatis.
