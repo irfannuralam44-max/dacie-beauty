@@ -198,13 +198,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** mengunci pengujian otomatis untuk boundary publik/privat sejak awal.
 - **Dependensi:** T-005, T-006, T-007.
-- **Scope:** tes role publik tidak dapat membaca `records`; tes server route privat menolak request tanpa sesi (gunakan stub/session boundary sementara bila modul auth belum dibangun, jangan membuat bypass produksi); dokumentasi threat boundary.
+- **Scope:** tes role publik tidak dapat membaca `records`; dokumentasikan kontrak host/route privat dan skenario uji negatif yang akan dijalankan setelah autentikasi tersedia. Jangan membuat stub sesi atau bypass autentikasi produksi hanya demi meluluskan tes fase foundation.
 - **Di luar scope:** autentikasi final dan halaman rekam kulit.
 - **Kemungkinan file:** integration/security tests, test helpers, `docs/security/*`.
 - **Acceptance criteria:**
   - [ ] Tes negatif akses DB publik ke records lulus karena akses ditolak.
   - [ ] Tidak ada test helper yang membuka bypass pada production build.
   - [ ] Boundary privat terdokumentasi dan siap diperketat oleh modul auth.
+  - [ ] Tes tanpa sesi dijadwalkan pada T-019/T-028, bukan disimulasikan sebagai autentikasi final di fase foundation.
   - [ ] Semua tes dapat dijalankan lokal.
 - **Tes:** integration security tests; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-008-foundation-security-tests.md`.
@@ -240,14 +241,16 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menampilkan treatment, provider yang boleh ditampilkan, dan informasi jam kerja tanpa membuka tabel privat.
 - **Dependensi:** T-005, T-006, T-009.
-- **Scope:** implementasikan kontrak baca publik yang disetujui; gunakan function/view dengan output terbatas; validasi field yang boleh keluar.
+- **Scope:** discovery dan penetapan kontrak data konfigurasi publik (treatment aktif, durasi, jam kerja/provider yang memang perlu ditampilkan). Implementasi function/view hanya boleh dilakukan setelah pemilik menyetujui perluasan kontrak `app_public`; tanpa persetujuan, task berhenti pada dokumentasi opsi dan risiko. Jangan memberi SELECT tabel langsung.
 - **Di luar scope:** halaman admin untuk mengubah konfigurasi.
 - **Kemungkinan file:** SQL migration, server repository, route handler, integration tests.
 - **Acceptance criteria:**
-  - [ ] Public query hanya mengembalikan data konfigurasi yang memang boleh diketahui.
+  - [ ] Keputusan pemilik tentang kontrak konfigurasi publik dicatat secara eksplisit.
+  - [ ] Jika disetujui, output hanya berisi field konfigurasi non-sensitif yang dibutuhkan halaman booking.
   - [ ] Tidak ada nama pelanggan, nomor WA, atau data records pada hasil.
   - [ ] Koneksi menggunakan `app_public`.
-  - [ ] Tidak ada grant SELECT luas pada tabel operasional tanpa persetujuan.
+  - [ ] Tidak ada grant SELECT luas pada tabel operasional.
+  - [ ] Jika keputusan belum ada, implementasi akses tambahan berstatus BLOCKED dan task tidak boleh dinyatakan selesai.
 - **Tes:** integration test bentuk output dan privilege; verify.
 - **Laporan:** `docs/reports/T-010-public-booking-config.md`.
 
@@ -428,19 +431,20 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** integration tests dengan dua role DB dan berbagai status sesi; verify.
 - **Laporan:** `docs/reports/T-019-private-authorization.md`.
 
-## T-020 — Profil pelanggan dan pencarian
+## T-020 — Identitas dasar pelanggan dan pencarian
 
 - **Repo:** sama.
 - **Branch:** `agent/T-020-customer-profiles`
 - **Estimasi:** M
 - **Tujuan:** mengelola daftar dan profil pelanggan pada area privat.
 - **Dependensi:** T-019.
-- **Scope:** daftar pelanggan; pencarian nama; profil berisi nama, WA ternormalisasi, tipe kulit, keluhan utama, alergi/sensitivitas, catatan; validasi server.
+- **Scope:** daftar pelanggan dan pencarian nama; buat/ubah profil identitas dasar yang hanya berisi nama dan nomor WhatsApp ternormalisasi. Field jenis kulit, keluhan utama, alergi/sensitivitas, catatan kulit, dan data kunjungan ditunda sampai consent tercatat pada T-021.
 - **Di luar scope:** foto before-after dan import massal.
 - **Kemungkinan file:** customer service/repository, private routes/pages, forms, tests.
 - **Acceptance criteria:**
   - [ ] Hanya pengguna terautentikasi dapat mencari/membaca/mengubah profil.
   - [ ] Nomor WA disimpan dalam format normalisasi yang konsisten.
+  - [ ] Profil dasar tidak menyimpan field kesehatan/kulit.
   - [ ] Pencarian nama tidak mengembalikan data di luar area privat.
   - [ ] Validasi dan batas panjang input diterapkan di server.
   - [ ] Tidak ada PII pada log umum.
@@ -454,12 +458,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** mencatat persetujuan dan menyediakan penanganan permintaan penghapusan/anonymisasi.
 - **Dependensi:** T-020.
-- **Scope:** consent timestamp dan consent text version; tampilkan status consent; alur permintaan penghapusan/anonymisasi yang aman; catat keputusan dan hasil.
+- **Scope:** consent timestamp dan consent text version; registry/rujukan versi teks consent; tampilkan status consent; sediakan tindakan pencatatan consent sebelum field kesehatan/kulit dapat dibuat atau diubah; alur permintaan penghapusan/anonymisasi yang aman; catat keputusan dan hasil.
 - **Di luar scope:** klaim sertifikasi/kepatuhan hukum.
 - **Kemungkinan file:** migration, consent service/UI, privacy workflow, tests, docs.
 - **Acceptance criteria:**
   - [ ] Catatan consent menyimpan waktu dan versi teks yang disetujui.
   - [ ] Versi teks consent dapat ditelusuri.
+  - [ ] Server menolak pembuatan/perubahan field kesehatan/kulit jika consent belum tercatat.
+  - [ ] Profil dasar identitas boleh ada sebelum consent, tetapi tidak boleh berisi catatan kulit/kunjungan.
   - [ ] Permintaan penghapusan/anonymisasi tidak dieksekusi diam-diam tanpa otorisasi.
   - [ ] Dampak terhadap riwayat booking/audit dan kewajiban retensi didokumentasikan.
   - [ ] Teks final ditandai untuk review hukum bila diperlukan.
@@ -473,11 +479,12 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyimpan riwayat kunjungan dan catatan perawatan.
 - **Dependensi:** T-020, T-021.
-- **Scope:** tanggal kunjungan; treatment; catatan kondisi kulit; produk digunakan; rekomendasi; tanggal follow-up; created_by; UI tambah/edit/detail sesuai izin.
+- **Scope:** lengkapi profil dengan jenis kulit, keluhan utama, alergi/sensitivitas, dan catatan; lalu riwayat kunjungan berisi tanggal, treatment, kondisi kulit, produk digunakan, rekomendasi, tanggal follow-up, dan created_by. Semua operasi data kesehatan/kulit wajib memeriksa consent di server sebelum insert/update.
 - **Di luar scope:** diagnosis medis otomatis, rekomendasi AI, foto before-after.
 - **Kemungkinan file:** visit repository/service, private pages/forms, migrations, tests.
 - **Acceptance criteria:**
   - [ ] Kunjungan selalu terhubung ke customer yang valid.
+  - [ ] Profil kesehatan/kulit dan kunjungan ditolak jika consent belum tercatat.
   - [ ] Created_by mencatat akun privat yang membuat catatan.
   - [ ] Data hanya dapat diakses melalui server privat.
   - [ ] Input tervalidasi dan tidak mengklaim diagnosis medis.
@@ -528,13 +535,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menghubungkan alur booking ke proses kerja manual pemilik.
 - **Dependensi:** T-020, T-021, T-024.
-- **Scope:** tombol konfirmasi manual; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil dengan langkah yang jelas dan catatan consent sesuai aturan.
+- **Scope:** tombol konfirmasi manual hanya setelah kontrak hak perubahan status booking pada PRD K-07 disetujui; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil identitas dasar saja. Pengisian data kulit/kunjungan tetap melewati consent gate T-021/T-022.
 - **Di luar scope:** WhatsApp API, pengiriman otomatis, auto-merge profil.
 - **Kemungkinan file:** booking actions, customer matching service, WhatsApp link helper, UI, tests.
 - **Acceptance criteria:**
   - [ ] Link WhatsApp dibuat dari nomor yang sudah dinormalisasi dan pesan yang di-encode dengan benar.
   - [ ] Pesan pembuka dapat diedit dari pengaturan privat.
   - [ ] Pencocokan WA dilakukan di server dan hanya pada area privat.
+  - [ ] Status booking tidak diubah melalui UPDATE tabel langsung; gunakan hanya kontrak fungsi terbatas yang disetujui pemilik.
+  - [ ] Jika keputusan K-07 belum disetujui, tombol/aksi perubahan status berstatus BLOCKED dan task tidak boleh mengklaim konfirmasi booking selesai.
   - [ ] Jika ada kecocokan, pengguna dapat membuka profil yang sesuai.
   - [ ] Jika tidak ada kecocokan, pembuatan profil memerlukan tindakan eksplisit.
   - [ ] Tidak ada penggabungan otomatis yang berisiko menyatukan dua orang berbeda.
@@ -566,7 +575,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Branch:** `agent/T-027-audit-log`
 - **Estimasi:** M
 - **Tujuan:** mencatat siapa melihat atau mengubah record pelanggan dan kapan.
-- **Dependensi:** T-019, T-020, T-022.
+- **Dependensi:** T-019, T-020, T-022, T-026.
 - **Scope:** event audit untuk read/view dan mutation yang ditetapkan PRD; actor; action; object reference; timestamp; UI/akses audit terbatas bila dibutuhkan.
 - **Di luar scope:** logging isi lengkap catatan kesehatan.
 - **Kemungkinan file:** audit service, middleware/wrapper, migration, tests, docs.
@@ -576,6 +585,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Audit log tidak menyimpan salinan isi sensitif record.
   - [ ] Pengguna biasa tidak dapat mengubah atau menghapus jejak audit.
   - [ ] Kegagalan audit ditangani sesuai kebijakan yang terdokumentasi.
+  - [ ] Perubahan treatment, provider, jam kerja, durasi, dan jeda juga menghasilkan audit event.
 - **Tes:** integration tests untuk view/create/update dan proteksi audit; verify.
 - **Laporan:** `docs/reports/T-027-audit-log.md`.
 
@@ -631,13 +641,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menjalankan stack pada mini PC Linux target.
 - **Dependensi:** T-029.
-- **Scope:** panduan instalasi host; deploy container; volume; environment setup; pemeriksaan resource dan health; prosedur update/restart.
+- **Scope:** panduan instalasi host; deploy container; volume; environment setup; pemeriksaan resource dan health; enkripsi disk host sesuai kemampuan perangkat; update keamanan OS; konfigurasi SSH berbasis key dan penonaktifan password login setelah akses pemulihan diuji; prosedur update/restart. Jangan melakukan perubahan partisi/enkripsi destruktif pada host berisi data tanpa backup dan persetujuan pemilik.
 - **Di luar scope:** konfigurasi Tunnel/Access.
 - **Kemungkinan file:** deployment docs, scripts operasional non-secret.
 - **Acceptance criteria:**
   - [ ] App dan database berjalan pada perangkat target.
   - [ ] Layanan pulih setelah container restart.
   - [ ] Data tetap ada setelah restart.
+  - [ ] Enkripsi disk dan hardening SSH/OS diverifikasi atau keterbatasannya dicatat eksplisit.
   - [ ] Tidak ada secret pada script atau repo.
   - [ ] Instruksi dapat diulang oleh pemilik.
 - **Tes:** smoke test dari LAN; reboot/restart test; verifikasi volume.
@@ -650,12 +661,13 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menghubungkan hostname publik dan privat ke service yang tepat tanpa port forwarding.
 - **Dependensi:** T-016, T-030.
-- **Scope:** konfigurasi Tunnel; route `booking.<domain>` ke public app dan `rekam.<domain>` ke boundary privat; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini.
+- **Scope:** konfigurasi Tunnel yang mengarahkan `booking.<domain>` dan `rekam.<domain>` ke **instance aplikasi Next.js yang sama**; host guard aplikasi membatasi route yang boleh dilayani pada masing-masing hostname; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini. Jangan membuat aplikasi kedua, fork, atau deployment app terpisah.
 - **Di luar scope:** menganggap Tunnel sebagai autentikasi aplikasi.
 - **Kemungkinan file:** deployment docs dan konfigurasi contoh tanpa token.
 - **Acceptance criteria:**
   - [ ] Tidak ada token Tunnel dalam repository.
-  - [ ] Hostname booking menuju halaman booking publik.
+  - [ ] Kedua hostname menuju satu aplikasi Next.js/instance yang sama.
+  - [ ] Hostname booking hanya menyajikan halaman/endpoint publik.
   - [ ] Hostname rekam menuju boundary privat.
   - [ ] Tidak ada port router yang diekspos.
   - [ ] Pengujian memastikan route privat tetap ditolak pada hostname publik.
