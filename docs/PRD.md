@@ -2,10 +2,10 @@
 ## Dacie Beauty — Booking Online dan Rekam Kulit Privat
 
 - **Status:** Draft baseline untuk implementasi
-- **Versi dokumen:** 1.0
-- **Tanggal:** 19 November 2026
+- **Versi dokumen:** 1.2
+- **Tanggal:** 20 November 2026
 - **Repositori:** `irfannuralam44-max/dacie-beauty` (private)
-- **Branch dokumen:** `docs/T-001-prd`
+- **Branch dokumen:** `docs/DOC-008-architect-decisions` (riwayat branch dokumen dipetakan di `AGENTS.md`)
 - **Bahasa produk dan dokumentasi:** Bahasa Indonesia
 - **Zona waktu operasional:** `Asia/Jakarta`
 
@@ -17,7 +17,9 @@
 
 Dacie Beauty adalah bisnis skincare dan facial treatment di Cimahi, Jawa Barat, yang dijalankan oleh pemilik dan istrinya. Bisnis menjual produk Theraskin dan Probeauty serta menyediakan layanan facial dan konsultasi kulit untuk pasar menengah atas.
 
-Sistem terdiri dari satu aplikasi Next.js dalam satu repositori, tetapi mempunyai dua area dengan tujuan, hostname, autentikasi, dan hak akses data yang berbeda:
+Sistem menggunakan satu codebase Next.js dan satu image Docker dalam satu repositori, dijalankan sebagai dua instance/service terpisah dari image yang sama dengan `APP_MODE`: `web-public` (`APP_MODE=public`) dan `web-private` (`APP_MODE=private`). `web-public` hanya melayani `booking.<domain>`, hanya menerima kredensial `app_public` dan secret CAPTCHA, serta wajib menolak startup jika ada kredensial atau secret privat di environment. `web-private` hanya melayani `rekam.<domain>`, hanya menerima kredensial `app_private` dan secret sesi. Tiap instance mengembalikan 404 untuk route mode lain pada lapisan routing dan tetap memakai host guard allowlist sebagai lapisan kedua. Cloudflare Tunnel memetakan kedua hostname ke service yang sesuai. Fork dan aplikasi/codebase terpisah tetap dilarang.
+
+Sistem mempunyai dua area dengan tujuan, hostname, autentikasi, dan hak akses data yang berbeda:
 
 1. **Booking online publik** — calon pelanggan memilih treatment, tanggal, dan jam, lalu mengisi nama dan nomor WhatsApp. Form hanya memiliki lima kolom tersebut. Area ini tidak meminta keluhan, alergi, jenis kulit, atau informasi kesehatan.
 2. **Rekam kulit privat** — aplikasi internal untuk tepat dua akun, yaitu pemilik dan istri. Area ini menyimpan profil pelanggan, riwayat kunjungan, catatan kondisi kulit, persetujuan, dan audit log. Konsultasi rinci berlangsung secara privat melalui WhatsApp atau tatap muka; hasil yang relevan dicatat oleh staf berwenang di sistem.
@@ -129,10 +131,11 @@ Pemisahan data bukan sekadar pemisahan tampilan. Data booking dan data rekam kul
 6. Pelanggan memilih salah satu jam yang tersedia.
 7. Pelanggan mengisi nama dan nomor WhatsApp.
 8. Pelanggan menyelesaikan CAPTCHA jika diwajibkan oleh kebijakan proteksi.
-9. Server memvalidasi seluruh input, memeriksa rate limit, menghitung ulang ketersediaan, lalu menyimpan booking melalui koneksi `app_public`.
+9. Server memvalidasi seluruh input, memeriksa rate limit, menghitung ulang ketersediaan, lalu memanggil `booking.create_booking(...)` melalui koneksi `app_public`; fungsi database memilih provider dan menyimpan booking secara atomik.
 10. Constraint database menjadi pertahanan terakhir terhadap tabrakan jadwal.
 11. Aplikasi menampilkan hasil pengajuan booking tanpa membocorkan nama/kontak pelanggan lain.
 12. Pemilik melakukan konfirmasi secara manual melalui WhatsApp. Tidak ada pesan otomatis yang dikirim oleh sistem.
+13. Di bawah tombol kirim, halaman menampilkan pemberitahuan privasi statis bahwa nama dan nomor WhatsApp hanya dipakai untuk konfirmasi jadwal, dengan tautan ke halaman privasi statis. Ini bukan input atau checkbox tambahan.
 
 **Batas form:** nama, nomor WhatsApp, treatment, tanggal, jam. Jangan menambah kolom keluhan, alergi, jenis kulit, diagnosis, foto, alamat, email, atau data kesehatan lain.
 
@@ -177,18 +180,23 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
 | ID | Prioritas | Kebutuhan |
 |---|---:|---|
 | PUB-01 | P0 | Halaman booking menampilkan identitas Dacie Beauty dan bahasa Indonesia |
-| PUB-02 | P0 | Form hanya memiliki lima kolom yang ditetapkan |
+| PUB-02 | P0 | Form hanya memiliki lima kolom: nama, WhatsApp, treatment, tanggal, jam |
 | PUB-03 | P0 | Treatment awal tersedia sesuai daftar pada PRD |
-| PUB-04 | P0 | Pelanggan dapat memilih tanggal dan slot yang masih tersedia |
+| PUB-04 | P0 | Slot tersedia ditampilkan bila minimal satu provider aktif kosong |
 | PUB-05 | P0 | Slot dihitung di server dalam zona waktu `Asia/Jakarta` |
-| PUB-06 | P0 | Sistem menerapkan jam kerja, durasi treatment, jeda, dan ketersediaan penyedia |
+| PUB-06 | P0 | Sistem menerapkan jam kerja, durasi treatment, jeda, time_off, dan ketersediaan provider |
 | PUB-07 | P0 | Nomor WhatsApp divalidasi dan dinormalisasi ke format `62xxxxxxxxxx` |
-| PUB-08 | P0 | Server memvalidasi ulang slot pada saat submit |
-| PUB-09 | P0 | Database menolak tabrakan jadwal, termasuk request bersamaan |
-| PUB-10 | P0 | Respons publik tidak menampilkan nama, nomor, atau detail booking orang lain |
-| PUB-11 | P0 | Rate limit per IP dan CAPTCHA gratis diterapkan setelah discovery layanan |
-| PUB-12 | P0 | Konfirmasi dilakukan manual melalui WhatsApp |
+| PUB-08 | P0 | Server memvalidasi ulang slot pada saat submit melalui `booking.create_booking` |
+| PUB-09 | P0 | Constraint database mencegah tabrakan provider/rentang, termasuk request bersamaan |
+| PUB-10 | P0 | Respons publik tidak menampilkan nama, nomor, ID booking, atau status booking orang lain |
+| PUB-11 | P0 | Rate limit per IP dan CAPTCHA gratis diterapkan setelah batas dan syarat layanan diverifikasi |
+| PUB-12 | P0 | Konfirmasi dilakukan manual melalui WhatsApp; tidak ada pembatalan mandiri pelanggan |
 | PUB-13 | P1 | Halaman memberi pesan hasil submit yang jelas tanpa membocorkan data internal |
+| PUB-14 | P0 | Pemberitahuan privasi statis di bawah tombol kirim, dengan tautan ke halaman privasi; teks final disiapkan pemilik dan ditandai untuk tinjauan hukum |
+| PUB-15 | P0 | Maksimal dua booking aktif (pending/confirmed dan belum lewat) per nomor WhatsApp |
+| PUB-16 | P0 | Aturan booking: langkah slot 30 menit, minimal 3 jam sebelum mulai, maksimal 30 hari ke depan; divalidasi server/database |
+
+
 
 ### 6.2 Rekam kulit privat
 
@@ -198,31 +206,40 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
 | PRI-02 | P0 | Tidak ada pendaftaran publik |
 | PRI-03 | P0 | Password disimpan dalam bentuk hash yang kuat |
 | PRI-04 | P0 | Login memiliki rate limit/pembatasan percobaan dan sesi kedaluwarsa |
-| PRI-05 | P0 | Rute privat menolak request tanpa sesi login yang sah |
+| PRI-05 | P0 | Rute dan repository privat menolak request tanpa sesi login yang sah |
 | PRI-06 | P0 | Daftar pelanggan mendukung pencarian nama |
 | PRI-07 | P0 | Profil menyimpan nama, WhatsApp ternormalisasi unik, jenis kulit, keluhan utama, alergi/sensitivitas, dan catatan |
 | PRI-08 | P0 | Riwayat kunjungan menyimpan seluruh atribut yang ditetapkan |
 | PRI-09 | P0 | Sistem menampilkan penanda follow-up untuk kunjungan terakhir ≥25 hari |
 | PRI-10 | P0 | Area privat membaca daftar booking dari skema booking |
-| PRI-11 | P0 | Pengguna dapat mengonfirmasi booking dari area privat |
+| PRI-11 | P0 | Pengguna dapat mengubah status booking melalui fungsi `booking.set_booking_status` sesuai transisi yang diizinkan |
 | PRI-12 | P0 | Pengguna dapat membuka profil berdasarkan nomor WhatsApp booking |
-| PRI-13 | P0 | Jika profil belum ada, pengguna dapat membuatnya tanpa menyalin data booking ke skema records secara otomatis selain data yang diperlukan dan diizinkan pengguna |
-| PRI-14 | P0 | Treatment, penyedia layanan, dan jam kerja dapat dikelola |
+| PRI-13 | P0 | Jika profil belum ada, pengguna dapat membuat profil identitas dasar; data kulit hanya setelah consent |
+| PRI-14 | P0 | Treatment, provider, jam kerja, time_off, dan booking_rules dapat dikelola |
 | PRI-15 | P0 | Tautan WhatsApp menggunakan nomor yang dinormalisasi dan pesan pembuka yang dapat diubah |
 | PRI-16 | P0 | Persetujuan dicatat dengan tanggal dan versi teks |
 | PRI-17 | P0 | Audit log mencatat siapa melihat atau mengubah rekam pelanggan dan kapan |
 | PRI-18 | P0 | Tersedia alur hapus atau anonimisasi data |
 | PRI-19 | P1 | Pengguna dapat memfilter booking berdasarkan tanggal/status |
 | PRI-20 | P1 | Pesan pembuka WhatsApp dapat diedit tanpa deploy aplikasi |
+| PRI-21 | P0 | Dashboard privat menyorot booking berstatus pending yang berumur lebih dari 24 jam |
+| PRI-22 | P0 | Pengguna privat dapat mengelola pengecualian jadwal/libur/cuti (`time_off`) per provider |
+
+
 
 ### 6.3 Pengaturan
 
-- Treatment memiliki nama, status aktif, durasi, dan jeda antar sesi atau parameter jeda yang relevan.
-- Penyedia layanan memiliki identitas internal dan status aktif.
-- Jam kerja dapat diatur per penyedia dan hari.
-- Sistem harus mendukung hari libur/pengecualian jadwal bila dibutuhkan oleh aturan operasional; detail UI dan modelnya ditetapkan pada task desain data.
-- Perubahan pengaturan hanya tersedia bagi pengguna privat yang telah login.
-- Setiap perubahan pengaturan penting dicatat di audit log.
+- Treatment memiliki nama, status aktif, durasi menit, dan jeda menit.
+- Provider memiliki nama internal, status aktif, dan `priority` untuk urutan pemilihan otomatis.
+- Jam kerja dapat diatur per provider dan hari.
+- Pengecualian jadwal/libur/cuti disimpan pada tabel `booking.time_off` per provider.
+- Aturan booking disimpan pada satu baris `booking.booking_rules`, dapat diubah dari area privat. Nilai awal: langkah slot 30 menit, minimal 3 jam sebelum waktu mulai, maksimal 30 hari ke depan, dan maksimal dua booking aktif per nomor WhatsApp.
+- Pelanggan tidak dapat membatalkan booking sendiri; pembatalan dilakukan melalui WhatsApp kepada pemilik.
+- Booking berstatus pending tidak kedaluwarsa otomatis. Dashboard privat menyorot pending yang berumur lebih dari 24 jam.
+- Pesan pembuka WhatsApp default netral dan dapat diubah dari area privat.
+- Perubahan pengaturan hanya tersedia bagi pengguna privat yang telah login dan dicatat di audit log.
+
+
 
 ## 7. Kebutuhan non-fungsional
 
@@ -241,16 +258,22 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
 
 ### 7.2 Akses data dan migrasi
 
-- Skema `booking` menyimpan data operasional booking.
-- Skema `records` menyimpan data pelanggan dan rekam kulit.
-- Role `app_public` hanya boleh membuat booking dan menjalankan fungsi terbatas untuk mendapatkan informasi jam yang sudah terisi tanpa nama/kontak.
-- Role `app_public` tidak memiliki hak apa pun atas skema `records`.
-- Role `app_private` boleh membaca booking dan mengakses data `records` sesuai kebutuhan aplikasi privat. Kebutuhan mengubah status booking dari area privat belum diberi grant langsung; gunakan fungsi database sempit hanya setelah kontrak privilege disetujui pemilik (lihat Catatan keberatan K-07).
-- Koneksi database publik dan privat harus dibuat terpisah dan digunakan secara eksplisit pada server-side code.
-- Test lokal wajib membuktikan role publik ditolak ketika membaca tabel pada skema `records`.
-- Migrasi harus berupa file SQL yang tersimpan di repo atau alat migrasi ringan yang dipilih dan dijelaskan dalam PRD implementasi. Pilihan awal yang disarankan adalah **file SQL berversi** agar sederhana, transparan, mudah diaudit, dan tidak mengikat vendor.
-- Pilihan akses data awal yang disarankan adalah **driver `pg` dengan SQL berparameter**. Alasannya: akses eksplisit ke dua pool/role, kontrol query dan transaksi yang jelas, serta minim abstraksi untuk skema sensitif. Keputusan final harus dicatat saat discovery dan tidak boleh membuat kedua role berbagi koneksi.
+- Skema `booking` menyimpan data booking operasional dan konfigurasi jadwal; skema `records` menyimpan data pelanggan dan rekam kulit.
+- `app_public` tidak memiliki privilege tabel apa pun. Role ini hanya memiliki `USAGE` pada schema `booking`, `EXECUTE` pada tiga fungsi publik D-02, dan tidak memiliki `USAGE` pada schema `records`.
+- Fungsi publik yang boleh dipanggil `app_public`:
+  1. `booking.get_public_config()`: treatment aktif (id, nama, durasi menit, jeda menit), jam kerja provider aktif per hari (provider_id, hari, mulai, selesai; tanpa nama provider), pengecualian `time_off`, dan `booking_rules`.
+  2. `booking.get_blocked_intervals(p_from, p_to)`: hanya `provider_id`, `starts_at`, `ends_at` untuk booking pending/confirmed yang beririsan. Rentang maksimum 35 hari; rentang lebih panjang ditolak. Tidak mengembalikan ID booking, nama, nomor, atau status.
+  3. `booking.create_booking(p_name, p_wa, p_treatment_id, p_starts_at)`: satu-satunya jalur menulis booking publik. Fungsi memvalidasi D-06, menormalisasi ulang WhatsApp, memilih provider menurut D-04, menulis aman terhadap request bersamaan, dan hanya mengembalikan `created`, `slot_taken`, `invalid`, atau `limit_reached`.
+- Ketiga fungsi publik menggunakan `SECURITY DEFINER`, dimiliki role khusus `NOLOGIN` (misalnya `booking_fn_owner`) dengan hak minimum, bukan superuser; `search_path` dikunci, objek dikualifikasi schema, `REVOKE ALL ... FROM PUBLIC`, dan `GRANT EXECUTE` hanya kepada `app_public`. Argumen dan hasil divalidasi. Sintaks dan privilege detail diverifikasi pada task database.
+- `app_private` memiliki `SELECT` pada seluruh tabel schema `booking`; `INSERT` dan `UPDATE` (tanpa DELETE, gunakan `is_active`) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa INSERT/UPDATE/DELETE langsung pada `booking.bookings`. Perubahan status hanya melalui `booking.set_booking_status(p_booking_id, p_new_status, p_actor_user_id)` dengan `SECURITY DEFINER` dan kontrol owner/`search_path`/grant yang sama ketatnya.
+- `booking.set_booking_status` mengizinkan pending → confirmed/cancelled; confirmed → cancelled/completed/no_show; completed dan no_show hanya dapat ditetapkan jika `starts_at` sudah lewat. Setiap transisi dicatat pada `booking.status_events` (booking_id, dari, ke, actor_user_id tanpa FK lintas schema, waktu).
+- `app_private` memiliki hak penuh yang diperlukan pada schema `records`, tanpa hak DDL dan bukan pemilik objek.
+- Tidak ada role aplikasi yang superuser atau pemilik schema/tabel. Default privileges untuk tabel, sequence, dan fungsi baru ditinjau pada setiap migrasi.
+- Test lokal memakai kredensial role nyata dan membuktikan `app_public` tidak dapat SELECT atau INSERT langsung ke tabel apa pun, tidak dapat mengakses schema `records`, dan hanya dapat menjalankan fungsi yang diberikan.
+- Migrasi berupa file SQL berversi atau alat ringan yang dipilih dan dijelaskan saat bootstrap. Rekomendasi awal tetap file SQL berversi dan driver `pg` dengan SQL berparameter; pilihan dan versi aktual perlu diverifikasi, bukan ditebak.
 - Tidak boleh ada query yang menggabungkan atau mengekspos catatan kulit melalui jalur publik.
+
+
 
 ### 7.3 Autentikasi
 
@@ -261,6 +284,9 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
 - Sesi harus memiliki waktu kedaluwarsa, dapat dicabut, dan tidak diperpanjang tanpa batas.
 - Implementasi wajib melindungi login dari brute force dan memastikan logout mencabut sesi.
 - Alternatif Auth.js hanya boleh dipertimbangkan dalam discovery, bukan alasan untuk menambah scope autentikasi sosial atau pendaftaran.
+- Gunakan versi Next.js stabil yang sudah memuat perbaikan keamanan terbaru; pada bootstrap verifikasi advisory resmi Next.js dan catat versi, URL sumber, serta tanggal pemeriksaan di laporan. Versi paket spesifik perlu diverifikasi.
+- Otorisasi privat wajib diperiksa pada lapisan akses data: setiap fungsi repository privat memanggil guard sesi/otorisasi (misalnya `requireSession()`) sebelum query. Middleware/proxy bukan satu-satunya kontrol.
+- `scripts/verify.sh` menjalankan audit dependency. Temuan high/critical menggagalkan verifikasi kecuali ada pengecualian tertulis yang disetujui dan dicatat dalam laporan.
 
 ### 7.4 Performa dan ketersediaan
 
