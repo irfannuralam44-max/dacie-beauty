@@ -101,6 +101,7 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 - [ ] Audit log tidak menyalin seluruh isi catatan sensitif.
 - [ ] Pengguna biasa tidak dapat mengubah/menghapus audit log.
 - [ ] Akses baca dan perubahan record yang diwajibkan dicatat.
+- [ ] Perubahan treatment, provider, jam kerja, durasi, dan jeda dicatat dalam audit log.
 - [ ] Error/monitoring tidak mengirim payload pribadi ke sistem eksternal.
 - [ ] Retensi log ditentukan dan tidak berlebihan.
 
