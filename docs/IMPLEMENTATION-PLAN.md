@@ -34,80 +34,98 @@ Ukuran task tidak boleh menjadi alasan untuk melewati acceptance criteria. Task 
 
 ```text
 Fase 0 — Foundation
-  ├─ repo & aturan agent
-  ├─ Docker Compose + Next.js + PostgreSQL
-  ├─ skema booking/records + migrasi + role DB
-  ├─ verify.sh + pengujian batas privilege
-  └─ struktur dokumentasi & laporan
+  ├─ T-001 bootstrap codebase Next.js + verifikasi advisory resmi
+  ├─ T-002/T-003 Docker Compose dua service + APP_MODE/env validation
+  ├─ T-004 schema booking/records + migrations
+  ├─ T-005 role/function grants D-02/D-03
+  ├─ T-006 data access pool terpisah per APP_MODE
+  ├─ T-007 verify.sh + audit dependency + secret scan
+  ├─ T-008 tes privilege dan boundary
+  ├─ T-039 seeder sintetis (setelah T-005)
+  └─ T-038 spike awal mini PC/Tunnel/Access (setelah T-008)
           |
           v
 Fase 1 — Booking publik
-  ├─ konfigurasi treatment/provider/jam kerja yang aman
-  ├─ kalkulasi slot server-side
-  ├─ pembuatan booking + pencegahan bentrok
-  ├─ UI booking Bahasa Indonesia
-  └─ proteksi abuse + E2E
+  ├─ T-009 status dan aturan booking D-04–D-06
+  ├─ T-010 get_public_config
+  ├─ T-011 slot dengan get_public_config/get_blocked_intervals
+  ├─ T-012 create_booking + provider auto-assign + collision prevention
+  ├─ T-013 UI lima field + pemberitahuan privasi
+  └─ T-014 abuse protection + T-015 E2E
           |
           v
 Fase 2 — Rekam kulit privat
-  ├─ autentikasi dua akun + sesi
-  ├─ isolasi hostname/route privat
-  ├─ profil pelanggan + persetujuan
-  ├─ riwayat kunjungan + follow-up
-  ├─ daftar booking + tindakan konfirmasi
-  ├─ pengaturan operasional
-  └─ audit log + pengujian akses
+  ├─ T-016 dua instance, mode routing 404 + host guard
+  ├─ T-017/T-018 autentikasi dan sesi
+  ├─ T-019 otorisasi di lapisan repository
+  ├─ T-020–T-023 profil, consent, kunjungan, follow-up
+  ├─ T-024 daftar booking + sorotan pending >24 jam
+  ├─ T-025 set_booking_status + link WhatsApp
+  ├─ T-026 pengaturan booking_rules/time_off
+  └─ T-027/T-028 audit log + E2E privat
           |
           v
 Fase 3 — Hardening & release
-  ├─ deployment mini PC Linux
-  ├─ Cloudflare Tunnel + Access
-  ├─ backup terenkripsi + restore drill
-  ├─ pemulihan setelah listrik/server mati
-  ├─ dokumentasi operasional + migrasi VPS
-  └─ pilot dengan data sintetis
+  ├─ T-029 Compose production dua service dari satu image
+  ├─ T-030 mini PC menjalankan dua instance
+  ├─ T-031 Tunnel memetakan dua hostname ke service berbeda
+  ├─ T-032 Access allowlist dua email
+  ├─ T-033 backup → T-040 uptime/backup alerts
+  ├─ T-034 restore → T-035 power recovery
+  ├─ T-036 VPS migration
+  ├─ T-041 account/secret runbook sebelum T-037
+  └─ T-037 pilot sintetis dan release sign-off
 ```
 
-Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 boleh memanfaatkan data booking dari fase 1, sehingga tidak dimulai sebelum kontrak data booking stabil. Fase 3 mengeraskan dan mengoperasikan hasil fase 1–2; bukan tempat untuk menambal desain keamanan mendasar yang seharusnya selesai lebih awal.
+Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data booking dari fase 1 dan tidak dimulai sebelum kontrak booking stabil. T-039 dapat dikerjakan setelah T-005; T-038 dikerjakan setelah T-008 untuk mengangkat risiko infrastruktur lebih awal. Fase 3 mengeraskan dan mengoperasikan hasil fase 1–2. Urutan fase tetap 0 → 1 → 2 → 3.
+
+
 
 ## 4. Fase 0 — Foundation
 
-**Tujuan:** menyediakan fondasi aplikasi dan database yang dapat dijalankan lokal, dimigrasikan secara terkontrol, serta membuktikan pemisahan privilege publik dan privat sejak awal.
+**Tujuan:** menyediakan fondasi codebase dan database yang dapat dijalankan lokal, memisahkan dua instance dan privilege, serta mengangkat risiko infrastruktur sebelum fitur dibangun.
 
 ### Urutan kerja
 
-| Urutan | Area | Hasil yang diharapkan | Estimasi |
-|---:|---|---|---|
-| 0.1 | Repository dan struktur | Struktur Next.js App Router, TypeScript, folder docs/scripts/tests, aturan repo | S |
-| 0.2 | Runtime lokal | Docker Compose untuk aplikasi dan PostgreSQL; health/readiness yang sesuai | M |
-| 0.3 | Kontrak konfigurasi | Daftar environment variables, validasi konfigurasi server, contoh env tanpa rahasia | S |
-| 0.4 | Skema dan migrasi | Schema `booking` dan `records`, migrasi SQL berversi, constraint dasar | L |
-| 0.5 | Role database | Role `app_public` dan `app_private`, grant minimum, function slot sesuai kontrak yang disepakati | L |
-| 0.6 | Fondasi pengujian | Unit/integration test dasar dengan PostgreSQL, data sintetis | M |
-| 0.7 | Verifikasi lokal | `scripts/verify.sh` menjalankan lint, test, dan secret scan lokal | M |
-| 0.8 | Bukti isolasi | Tes membuktikan `app_public` tidak dapat membaca schema `records`; kontrak route privat didokumentasikan untuk diuji penuh saat autentikasi tersedia | M |
-| 0.9 | Dokumentasi agent | `AGENTS.md`, `CLAUDE.md`, skill, template laporan tersedia dan konsisten | S |
+| Urutan | Task | Area | Hasil yang diharapkan | Estimasi |
+|---:|---|---|---|---|
+| 0.1 | T-001 | Repository dan struktur | Codebase Next.js, satu image, versi stabil dan advisory diverifikasi | M |
+| 0.2 | T-002 | Runtime lokal | Compose web-public, web-private, PostgreSQL dari satu image aplikasi | M |
+| 0.3 | T-003 | Kontrak konfigurasi | APP_MODE dan secret validation per instance | S |
+| 0.4 | T-004 | Skema dan migrasi | Schema booking/records, tabel dan constraint sesuai PRD | L |
+| 0.5 | T-005 | Role database | app_public/app_private, owner fungsi NOLOGIN, D-02/D-03 grants/functions | XL |
+| 0.6 | T-006 | Data access | Pool dipilih saat startup berdasarkan APP_MODE; public tidak dapat membuat pool private | M |
+| 0.7 | T-007 | Verifikasi lokal | lint, test, secret scan, audit dependency | M |
+| 0.8 | T-008 | Bukti isolasi | privilege dan boundary mode diuji/didokumentasikan | M |
+| 0.9 | T-039 | Seeder sintetis | treatment/provider/jam kerja/customer fiktif untuk seluruh test | M |
+| 0.10 | T-038 | Spike infrastruktur | hello dua instance di mini PC, Tunnel dua hostname, uji Access dua email, discovery Access/Turnstile | L |
+| 0.11 | — | Dokumentasi agent | AGENTS, CLAUDE, skill, template laporan tersedia | S |
 
 ### Dependensi dan catatan
 
-- 0.1 mendahului semua perubahan kode.
-- 0.2 dan 0.3 mendahului pengujian integrasi yang membutuhkan database.
-- 0.4 mendahului 0.5; grant dan function tidak boleh dibuat berdasarkan asumsi struktur tabel yang belum disepakati.
-- 0.8 adalah gerbang keamanan wajib, bukan pekerjaan opsional.
-- Keputusan akses konfigurasi publik seperti treatment dan jam kerja harus diselesaikan secara eksplisit. Task konfigurasi publik tidak boleh mengimplementasikan function tambahan untuk `app_public` sebelum pemilik menyetujui kontraknya; jangan memberi akses tabel secara luas.\n- Hak untuk mengubah status booking dari area privat juga merupakan keputusan terbuka (PRD K-07); jangan memberi UPDATE langsung kepada `app_private` sebelum kontrak disetujui.
-- Pilihan driver database, pendekatan autentikasi, dan detail function slot mengikuti keputusan PRD atau hasil discovery yang dicatat. Hindari menambah dua pola data-access/auth sekaligus.
+- T-001 mendahului semua perubahan kode; versi Next.js stabil dan advisory resmi diverifikasi serta dicatat URL/tanggalnya.
+- T-002 dan T-003 mendahului pengujian integrasi yang membutuhkan dua mode.
+- T-004 mendahului T-005; grant dan function dibuat berdasarkan struktur tabel yang sudah ditetapkan.
+- T-005 mendahului T-006 dan T-039.
+- T-008 adalah gerbang keamanan wajib. T-038 bergantung pada T-008; T-039 bergantung pada T-005.
+- T-005 menerapkan tiga fungsi publik D-02, set_booking_status dan grant D-03; tidak ada privilege tabel bagi app_public.
+- T-038 mencatat sumber resmi, URL, dan tanggal untuk batas Access serta syarat Turnstile. Versi/batas layanan yang belum terbukti diberi label "perlu diverifikasi".
+- Pilihan driver database, runner test, dan sintaks extension PostgreSQL diverifikasi pada task; jangan menebak versi atau kemampuan layanan.
 
 ### Gerbang keluar fase 0
 
 Fase 0 dinyatakan selesai hanya jika:
-- Aplikasi dan PostgreSQL dapat dijalankan dari instruksi repo pada lingkungan pengembangan.
-- Migrasi dapat diterapkan dari database kosong secara berurutan dan hasilnya konsisten.
-- Dua role DB memiliki privilege minimum yang terdokumentasi.
-- Pengujian negatif membuktikan `app_public` tidak bisa membaca `records`.
-- Kontrak host/route privat terdokumentasi; tes request tanpa sesi wajib diselesaikan pada fase 2 setelah autentikasi dan route privat dibangun.
-- `scripts/verify.sh` berjalan lokal dan hasilnya dicatat.
+- Codebase dan PostgreSQL dapat dijalankan melalui Docker Compose dengan dua service aplikasi dari image yang sama.
+- Startup validation memastikan public mode tidak memiliki credential/secret privat dan hanya membuat pool app_public.
+- Migrasi dapat diterapkan dari database kosong secara berurutan.
+- Grant/function D-02/D-03 dan tes privilege lulus; app_public tidak dapat SELECT/INSERT langsung ke tabel apa pun.
+- Seeder sintetis T-039 tersedia untuk unit/integration/E2E.
+- Spike T-038 selesai; dua hostname mencapai instance yang benar, Access diuji dengan dua email, dan discovery resmi didokumentasikan (atau secara eksplisit diberi label "perlu diverifikasi").
+- scripts/verify.sh berjalan lokal termasuk audit dependency.
 - Tidak ada rahasia atau data pelanggan nyata di repo, fixture, atau laporan.
 - Auditor memberikan PASS atau PASS dengan catatan yang tidak menghalangi fase berikutnya.
+
+
 
 ## 5. Fase 1 — Booking publik
 
@@ -128,9 +146,9 @@ Fase 0 dinyatakan selesai hanya jika:
 
 ### Dependensi dan catatan
 
-- 1.1 harus menetapkan semantik status: permintaan yang masuk belum otomatis berarti dikonfirmasi.
-- 1.2 harus mengikuti keputusan privilege fase 0 dan persetujuan pemilik atas kontrak konfigurasi publik. Sampai disetujui, jangan menambah privilege baru ke `app_public`.
-- 1.3 mendahului UI final karena UI harus mengikuti kontrak slot server-side.
+- 1.1 mengikuti status D-05: pending/confirmed memblokir slot; cancelled/completed/no_show tidak memblokir slot. Aturan booking D-06 disimpan di booking_rules.
+- 1.2 mengimplementasikan fungsi get_public_config() sesuai D-02; app_public tetap tanpa privilege tabel.
+- 1.3 menggunakan get_public_config dan get_blocked_intervals; slot ditawarkan bila minimal satu provider aktif kosong. T-012 memilih provider otomatis berdasarkan priority.
 - 1.4 wajib diselesaikan sebelum booking dipakai pilot; pemeriksaan ketersediaan di UI saja tidak cukup.
 - 1.7 tidak boleh menjadi satu-satunya pertahanan terhadap bentrok atau input berbahaya.
 - Link WhatsApp untuk konfirmasi manual adalah tindakan pemilik, bukan integrasi API otomatis.
@@ -192,47 +210,51 @@ Fase 0 dinyatakan selesai hanya jika:
 
 ## 7. Fase 3 — Hardening dan release
 
-**Tujuan:** menjalankan sistem pada mini PC Linux secara aman dan dapat dipulihkan, dengan jalur migrasi ke VPS yang terdokumentasi.
+**Tujuan:** menjalankan dua instance dari satu image Docker pada mini PC Linux, menghubungkan hostname ke service yang tepat, serta memastikan sistem dapat dipantau dan dipulihkan.
 
 ### Urutan kerja
 
-| Urutan | Area | Hasil yang diharapkan | Estimasi |
-|---:|---|---|---|
-| 3.1 | Audit kesiapan produksi | Checklist konfigurasi, threat/risk review, dependency dan secret review | M |
-| 3.2 | Compose produksi | Konfigurasi production terpisah, restart policy, volume persisten, health checks | M |
-| 3.3 | Mini PC Linux | Deploy dan verifikasi layanan pada perangkat target | M |
-| 3.4 | Cloudflare Tunnel | Routing hostname publik dan privat tanpa membuka port router | M |
-| 3.5 | Cloudflare Access | Allowlist dua email untuk hostname privat; verifikasi batas paket dan konfigurasi aktual | M |
-| 3.6 | HTTPS dan cookie | Validasi TLS, Secure/HttpOnly/SameSite, trusted proxy dan origin handling | M |
-| 3.7 | Backup terenkripsi | Backup harian PostgreSQL ke disk eksternal dan satu salinan offsite | M |
-| 3.8 | Restore drill | Pemulihan database dan aplikasi dari backup, catat hasil serta waktu pemulihan | L |
-| 3.9 | Recovery listrik/server | Uji restart setelah mati listrik/reboot, konsistensi database, layanan kembali sehat | M |
-| 3.10 | Runbook operasional | Panduan start/stop, update, backup, restore, pemeriksaan log, respons insiden | M |
-| 3.11 | Panduan migrasi VPS | Langkah pindah Compose dan restore backup ke host lain | S |
-| 3.12 | Pilot terbatas | Uji alur dengan data sintetis, checklist penerimaan pemilik, catat temuan | M |
+| Urutan | Task | Area | Hasil yang diharapkan | Estimasi |
+|---:|---|---|---|---|
+| 3.1 | T-029 | Compose produksi | web-public, web-private, PostgreSQL; dua service app dari image sama, APP_MODE terpisah | M |
+| 3.2 | T-030 | Mini PC Linux | Deploy dan verifikasi dua instance serta database pada perangkat target | M |
+| 3.3 | T-031 | Cloudflare Tunnel | booking → web-public; rekam → web-private; tanpa port router | M |
+| 3.4 | T-032 | Cloudflare Access | Allowlist dua email untuk hostname privat; verifikasi batas aktual | M |
+| 3.5 | T-033 | Backup terenkripsi | Backup harian ke disk eksternal dan offsite | M |
+| 3.6 | T-040 | Monitoring dan alert | HTTP uptime booking eksternal dan peringatan backup gagal, tanpa PII | M |
+| 3.7 | T-034 | Restore drill | Pemulihan database dan aplikasi dari backup | L |
+| 3.8 | T-035 | Recovery listrik/server | Uji reboot/power recovery dan konsistensi database | M |
+| 3.9 | T-036 | Migrasi VPS | Panduan pindah Compose dan restore backup | S |
+| 3.10 | T-041 | Runbook akun/secret | Provisioning dua akun, recovery, pergantian perangkat, rotasi secret; wajib sebelum pilot | M |
+| 3.11 | T-037 | Pilot terbatas | Uji sintetis, audit akhir, keputusan go/no-go pemilik | M |
 
 ### Dependensi dan catatan
 
-- Audit kesiapan produksi harus dilakukan setelah fitur fase 1 dan 2 stabil.
-- Tunnel dan Access baru dikonfigurasi setelah routing dua hostname serta boundary privat telah diuji di aplikasi.
-- Konfigurasi Access bukan pengganti autentikasi aplikasi. Keduanya tetap wajib.
-- Backup belum dianggap valid sebelum restore drill berhasil.
-- Simpan salinan offsite terenkripsi dan pastikan kunci pemulihan tidak hanya berada di perangkat yang sama.
-- Periksa batas paket Cloudflare yang berlaku saat implementasi; jangan mengasumsikan fitur/kuota dari informasi lama.
-- Uji pemulihan setelah reboot dan kehilangan daya, bukan hanya restart manual saat developer mengawasi.
+- T-029 membuat dua service aplikasi dari satu image yang sama dengan APP_MODE berbeda.
+- T-030 menjalankan kedua instance di mini PC; web-public hanya menerima app_public dan CAPTCHA secret, web-private hanya app_private dan session secret.
+- T-031 Tunnel harus memetakan setiap hostname ke service yang sesuai. Tiap instance 404 untuk route mode lain dan host guard allowlist tetap aktif.
+- T-032 menguji allowlist dua email di dashboard, bukan menyimpan identitas/secret di repository. Cloudflare Access bukan pengganti login aplikasi.
+- T-033 mendahului T-040; notifikasi kegagalan backup tidak boleh berisi data pribadi.
+- T-034 hanya setelah backup; backup belum dianggap valid sebelum restore drill berhasil.
+- T-041 harus selesai sebelum T-037 dan mencakup prosedur pemulihan akun, perangkat, serta rotasi secret.
+- Batas paket Access, layanan monitoring gratis, dan syarat layanan pihak ketiga perlu diverifikasi dari sumber resmi pada saat task. Catat URL dan tanggal; bila belum terbukti, tulis "perlu diverifikasi".
 - Pilot menggunakan data sintetis; data pelanggan nyata tidak boleh masuk ke test, demo, screenshot, atau laporan.
 
 ### Gerbang keluar fase 3
 
-- Deployment produksi berjalan pada mini PC dengan volume persisten dan restart policy yang sesuai.
-- Booking dan rekam kulit diakses melalui hostname yang benar.
-- Hostname privat dilindungi Cloudflare Access allowlist dua email dan login aplikasi.
+- Production Compose menjalankan web-public, web-private, dan PostgreSQL dengan restart policy serta volume persisten.
+- Kedua instance berasal dari satu image/codebase; masing-masing hanya menerima credential/secret mode-nya.
+- Tunnel memetakan booking ke web-public dan rekam ke web-private; route mode silang 404; host guard allowlist bekerja.
+- Hostname privat dilindungi Access allowlist dua email dan login aplikasi.
 - Tidak ada port router yang dibuka untuk mengekspos aplikasi.
-- Backup terenkripsi berjalan sesuai jadwal, termasuk satu salinan offsite.
-- Restore drill berhasil dan runbook mencatat langkah serta hasilnya.
+- Backup terenkripsi harian memiliki salinan disk eksternal dan offsite; restore drill berhasil.
+- Uptime booking dan kegagalan backup dapat memberi peringatan tanpa PII.
 - Recovery setelah reboot/power outage telah diuji.
-- Panduan migrasi VPS cukup untuk memindahkan aplikasi dan memulihkan database tanpa vendor lock-in.
+- Runbook akun/secret tersedia dan T-041 selesai sebelum sign-off.
+- Panduan migrasi VPS cukup untuk memindahkan aplikasi dan memulihkan database.
 - Pilot sintetis lulus dan pemilik menyetujui rilis.
+
+
 
 ## 8. Critical path dan area risiko
 
