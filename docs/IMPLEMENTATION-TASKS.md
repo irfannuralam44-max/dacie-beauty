@@ -226,7 +226,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** integration security tests; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-008-foundation-security-tests.md`.
 
-**Gerbang fase 0:** seluruh T-001 sampai T-008 merged dan lolos audit; database privilege separation terbukti.
+**Gerbang fase 0:** T-001 sampai T-008 serta T-038 dan T-039 selesai, merged, dan lolos audit; database privilege separation terbukti; spike dua instance/Tunnel/Access dilakukan pada mini PC; dataset sintetis tersedia. T-038 bergantung pada T-008; T-039 bergantung pada T-005.
 
 ---
 
@@ -904,7 +904,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** checklist release end-to-end; `scripts/verify.sh`; smoke tests deployment; review laporan.
 - **Laporan:** `docs/reports/T-037-release-pilot.md`.
 
-**Gerbang fase 3:** T-029 sampai T-037 selesai, audit keamanan dan operasional lulus, dan pemilik memberikan persetujuan rilis.
+**Gerbang fase 3:** T-029 sampai T-037, T-040, dan T-041 selesai; T-040 dilakukan setelah T-033 dan T-041 wajib selesai sebelum T-037; audit keamanan dan operasional lulus, dan pemilik memberikan persetujuan rilis.
 
 ---
 
@@ -912,17 +912,17 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 
 | Fase | Rentang task | Jumlah |
 |---|---|---:|
-| 0 — Foundation | T-001–T-008 | 8 |
+| 0 — Foundation | T-001–T-008, T-038–T-039 | 10 |
 | 1 — Booking publik | T-009–T-015 | 7 |
 | 2 — Rekam kulit privat | T-016–T-028 | 13 |
-| 3 — Hardening & release | T-029–T-037 | 9 |
-| **Total** | **T-001–T-037** | **37** |
+| 3 — Hardening & release | T-029–T-037, T-040–T-041 | 11 |
+| **Total** | **T-001–T-041** | **41** |
 
 ## Aturan perubahan backlog
 
 - Perubahan scope harus dicatat pada task dan laporan, bukan dilakukan diam-diam.
 - Jika acceptance criteria memerlukan perubahan PRD, agent berhenti dan mengajukan keputusan kepada pemilik.
-- Task baru diberi ID berikutnya; jangan memakai ulang ID yang sudah pernah dipakai.
+- ID `T-XXX` hanya untuk task implementasi; pekerjaan dokumentasi menggunakan `DOC-XXX`. Task implementasi baru diberi ID berikutnya; jangan memakai ulang ID yang sudah pernah dipakai.
 - Task tidak dianggap selesai hanya karena branch berhasil di-push. Selesai setelah laporan dan diff diaudit serta pemilik meng-merge.
 - Urutan fase tetap. Pemilik dapat menyetujui perubahan urutan task dalam fase bila dependensi tetap terpenuhi, tetapi tidak boleh melewati gerbang keamanan.
 
