@@ -316,7 +316,7 @@ Model berikut adalah baseline minimum. Boleh ditambah kolom/tabel/constraint yan
 - Nomor WhatsApp ternormalisasi unik pada `customers`, dengan format kanonis `62xxxxxxxxxx`.
 - Tidak ada FK lintas skema yang menghubungkan booking dengan customer. Penghubung logisnya adalah nomor WhatsApp ternormalisasi.
 - Data booking tidak boleh disalin secara otomatis menjadi catatan kulit.
-- Catatan kondisi kulit hanya dibuat di area privat setelah persetujuan dicatat.
+- Profil identitas dasar (nama dan WhatsApp) boleh dibuat sebelum persetujuan bila diperlukan untuk menautkan booking. Field kesehatan/kulit (jenis kulit, keluhan, alergi/sensitivitas, catatan) dan catatan kunjungan hanya boleh dibuat atau diubah setelah persetujuan dicatat dan diverifikasi server-side.
 - Audit log tidak boleh menyimpan salinan isi catatan sensitif, password, token, atau nomor WhatsApp lengkap jika tidak diperlukan untuk pembuktian tindakan.
 - Akses lihat profil/rekam pelanggan harus tercatat, bukan hanya perubahan.
 - Penghapusan/anonimisasi harus mempertimbangkan relasi kunjungan, audit, dan kebutuhan pembuktian; kebijakan final memerlukan tinjauan hukum/privasi.
