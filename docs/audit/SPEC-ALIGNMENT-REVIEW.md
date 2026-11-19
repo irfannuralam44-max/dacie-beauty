@@ -127,7 +127,7 @@ File lain diperiksa dan tidak memerlukan koreksi berdasarkan temuan review ini:
 
 ## 5. Status Git dan kesiapan mulai coding
 
-Perbandingan GitHub pada saat review menunjukkan branch hasil review berada 25 commit di depan `main`, tanpa commit tertinggal, dan berisi 17 file dokumentasi. Seluruh dokumen masih berada di branch dokumentasi; belum di-merge ke `main`.
+Perbandingan GitHub pada saat review menunjukkan branch hasil review berada di depan `main` tanpa commit tertinggal, dan berisi 17 file dokumentasi. Seluruh dokumen masih berada di branch dokumentasi; belum di-merge ke `main`.
 
 **Konsekuensi:** jangan mulai T-001 dari `main` sebelum dokumentasi ini digabungkan ke `main`. Instruksi agent mewajibkan branch task dibuat dari `main` yang sinkron, sehingga agent belum akan melihat PRD/AGENTS/skills bila dokumen belum masuk ke branch dasar.
 
