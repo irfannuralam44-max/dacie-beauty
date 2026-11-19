@@ -1,0 +1,802 @@
+# Daftar Task Implementasi Dacie Beauty
+
+**Status:** backlog awal, belum dikerjakan  
+**Repository:** `irfannuralam44-max/dacie-beauty`  
+**Sumber keputusan:** `docs/PRD.md`, `AGENTS.md`, `docs/IMPLEMENTATION-PLAN.md`, dan `skills/*/SKILL.md`  
+**Urutan fase:** 0 → 1 → 2 → 3  
+**Aturan:** satu task per branch, satu agent aktif, tidak push ke `main`.
+
+Daftar ini adalah backlog implementasi yang dapat diberikan satu per satu kepada coding agent. Task berikutnya hanya dimulai setelah task dependensinya di-merge dan hasilnya tersedia pada `main`. Jika hasil audit FAIL, perbaiki task yang sama sebelum melanjutkan.
+
+## Cara menggunakan backlog
+
+- Jangan memberikan seluruh backlog kepada agent sekaligus. Berikan hanya satu task.
+- Branch wajib mengikuti pola `agent/T-XXX-slug`, misalnya `agent/T-003-db-foundation`.
+- Semua task menggunakan repository yang sama: `irfannuralam44-max/dacie-beauty`.
+- Sebelum mulai dan sebelum push, ikuti prosedur Git pada `AGENTS.md`.
+- Agent wajib membaca `AGENTS.md` dan skill yang relevan sebelum mengubah file.
+- Agent harus menjalankan `scripts/verify.sh` sebelum push. Jika script belum tersedia, task foundation yang membuatnya harus diselesaikan terlebih dahulu; jangan mengarang hasil verifikasi.
+- Perintah tes spesifik harus mengikuti script yang benar-benar ada di `package.json`/konfigurasi repo. Agent wajib mencatat perintah aktual pada laporan.
+- Setiap task wajib membuat laporan di `docs/reports/T-XXX-slug.md`.
+- Acceptance criteria harus dijawab satu per satu dengan bukti. Bila tidak dapat diuji, tulis **tidak terverifikasi**.
+- Data uji hanya data sintetis. Jangan masukkan data pelanggan nyata, password, token, atau isi `.env` ke commit/laporan/chat.
+- Estimasi adalah ukuran relatif: XS, S, M, L. Jika task ternyata membesar menjadi XL, hentikan dan usulkan pemecahan task sebelum melanjutkan.
+
+## Kontrak laporan wajib untuk setiap task
+
+Laporan pada `docs/reports/T-XXX-slug.md` minimal berisi:
+1. Ringkasan perubahan.
+2. Daftar file yang dibuat/diubah.
+3. Perintah yang dijalankan dan hasilnya.
+4. Acceptance criteria satu per satu: PASS/FAIL/tidak terverifikasi beserta bukti.
+5. Keputusan dan asumsi.
+6. Risiko atau masalah tersisa.
+7. Catatan untuk auditor.
+
+Pesan akhir agent harus mengikuti format persis dari `AGENTS.md`:
+
+```text
+Push: berhasil
+Branch: <branch>
+SHA: <40 chars>
+Commit: <message>
+Laporan: <report path>
+```
+
+Jika push gagal:
+
+```text
+Push: GAGAL
+<alasan satu baris>
+Laporan: <report path>
+```
+
+---
+
+# Fase 0 — Foundation
+
+Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
+
+## T-001 — Bootstrap struktur aplikasi
+
+- **Repo:** `irfannuralam44-max/dacie-beauty`
+- **Branch:** `agent/T-001-app-bootstrap`
+- **Estimasi:** M
+- **Tujuan:** membuat kerangka aplikasi Next.js App Router + TypeScript sesuai stack PRD.
+- **Dependensi:** dokumentasi PRD dan AGENTS tersedia pada branch dasar.
+- **Scope:** inisialisasi aplikasi; struktur source minimal; konfigurasi TypeScript dan lint; halaman placeholder; README instruksi development; gunakan versi runtime/dependensi yang kompatibel dan catat versi aktual.
+- **Di luar scope:** fitur booking, autentikasi, database schema final, desain visual final.
+- **Kemungkinan file:** `package.json`, lockfile, `tsconfig.json`, konfigurasi Next.js/lint, `src/app/*`, `README.md`.
+- **Acceptance criteria:**
+  - [ ] Aplikasi dapat di-install dari lockfile.
+  - [ ] Perintah development dan build yang terdokumentasi berjalan.
+  - [ ] TypeScript dan lint aktif tanpa mematikan aturan secara global.
+  - [ ] Tidak ada rahasia atau file environment aktual yang dikomit.
+  - [ ] Struktur awal tidak mengunci aplikasi pada vendor hosting tertentu.
+- **Tes:** install bersih menggunakan package manager yang dipilih; lint; typecheck jika tersedia; build; `scripts/verify.sh` setelah tersedia.
+- **Laporan:** `docs/reports/T-001-app-bootstrap.md`.
+
+## T-002 — Docker Compose development
+
+- **Repo:** sama.
+- **Branch:** `agent/T-002-dev-compose`
+- **Estimasi:** M
+- **Tujuan:** menyediakan lingkungan lokal berisi app dan PostgreSQL.
+- **Dependensi:** T-001.
+- **Scope:** Compose development; service PostgreSQL; volume persisten; healthcheck yang sesuai; konfigurasi port lokal; contoh environment tanpa kredensial nyata; instruksi start/stop.
+- **Di luar scope:** Cloudflare Tunnel, konfigurasi produksi, backup offsite.
+- **Kemungkinan file:** `compose.yaml`, `.env.example`, `.dockerignore`, `README.md`, konfigurasi container.
+- **Acceptance criteria:**
+  - [ ] App dan PostgreSQL dapat dijalankan melalui instruksi terdokumentasi.
+  - [ ] Data database tetap ada setelah container direstart.
+  - [ ] Kredensial lokal berasal dari environment, bukan hardcoded pada source.
+  - [ ] Healthcheck membedakan service siap dan belum siap.
+  - [ ] Tidak ada port database yang diekspos ke jaringan publik.
+- **Tes:** `docker compose config`; jalankan stack; periksa health; restart service dan verifikasi volume.
+- **Laporan:** `docs/reports/T-002-dev-compose.md`.
+
+## T-003 — Konfigurasi environment dan validasi server
+
+- **Repo:** sama.
+- **Branch:** `agent/T-003-env-config`
+- **Estimasi:** S
+- **Tujuan:** memusatkan pembacaan konfigurasi dan mencegah aplikasi berjalan dengan konfigurasi penting yang tidak valid.
+- **Dependensi:** T-001.
+- **Scope:** schema validasi environment server; pemisahan variabel server-only dan variabel publik; dokumentasi nama/tujuan variabel; pesan error aman.
+- **Di luar scope:** memasukkan secret produksi atau membangun secret manager.
+- **Kemungkinan file:** modul konfigurasi server, `.env.example`, README, unit tests.
+- **Acceptance criteria:**
+  - [ ] Variabel wajib divalidasi saat startup atau saat konfigurasi pertama kali digunakan.
+  - [ ] Secret tidak diekspos melalui prefix/konfigurasi client.
+  - [ ] Error tidak mencetak nilai secret.
+  - [ ] Contoh env berisi placeholder, bukan nilai kredensial yang dapat digunakan.
+- **Tes:** unit test konfigurasi valid, hilang, dan format salah; lint; typecheck; verify.
+- **Laporan:** `docs/reports/T-003-env-config.md`.
+
+## T-004 — Migrasi awal dan schema PostgreSQL
+
+- **Repo:** sama.
+- **Branch:** `agent/T-004-db-schemas`
+- **Estimasi:** L
+- **Tujuan:** membuat skema `booking` dan `records` serta sistem migrasi SQL berversi.
+- **Dependensi:** T-002, T-003.
+- **Scope:** pilih satu mekanisme migrasi ringan; buat schema terpisah; tabel awal sesuai model data PRD; constraint, index, foreign key, timestamp; dokumentasikan cara apply dan status migrasi.
+- **Di luar scope:** UI CRUD dan data pelanggan nyata.
+- **Kemungkinan file:** `db/migrations/*`, skrip migrasi, `docs/database/*`, integration tests.
+- **Acceptance criteria:**
+  - [ ] Database kosong dapat dibangun dari seluruh migrasi secara berurutan.
+  - [ ] Schema `booking` dan `records` terpisah.
+  - [ ] Struktur tabel mencakup entitas awal PRD tanpa mengurangi field penting.
+  - [ ] Constraint dan index yang diperlukan didefinisikan melalui migrasi.
+  - [ ] Migrasi yang sudah diterapkan tidak diedit diam-diam; perubahan dibuat sebagai migrasi baru.
+  - [ ] Tidak ada data pribadi nyata dalam seed/fixture.
+- **Tes:** apply migrasi pada PostgreSQL kosong; apply ulang sesuai perilaku tool; integration test constraint; dokumentasikan perintah aktual.
+- **Laporan:** `docs/reports/T-004-db-schemas.md`.
+
+## T-005 — Role database dan privilege minimum
+
+- **Repo:** sama.
+- **Branch:** `agent/T-005-db-roles`
+- **Estimasi:** L
+- **Tujuan:** menerapkan isolasi akses database untuk koneksi publik dan privat.
+- **Dependensi:** T-004.
+- **Scope:** role `app_public` dan `app_private`; grant minimum; default privileges yang aman; function slot publik sesuai kontrak yang disepakati; tes positif dan negatif.
+- **Di luar scope:** UI booking atau UI rekam kulit.
+- **Kemungkinan file:** migrasi role/grant, SQL function, integration tests, dokumentasi privilege.
+- **Acceptance criteria:**
+  - [ ] `app_public` tidak memiliki privilege pada schema `records`, termasuk privilege yang diwariskan.
+  - [ ] `app_private` memiliki akses yang diperlukan sesuai PRD.
+  - [ ] Public slot lookup tidak mengembalikan nama atau nomor kontak pelanggan.
+  - [ ] Akses konfigurasi treatment/jam kerja publik hanya melalui kontrak sempit yang disetujui, bukan grant tabel luas.
+  - [ ] Tes membuktikan query langsung dari `app_public` ke `records` ditolak.
+  - [ ] Role runtime bukan superuser dan bukan pemilik database.
+- **Tes:** integration test memakai koneksi autentikasi masing-masing role pada PostgreSQL; tes privilege negatif; verify.
+- **Laporan:** `docs/reports/T-005-db-roles.md`.
+
+## T-006 — Lapisan data access dan transaksi
+
+- **Repo:** sama.
+- **Branch:** `agent/T-006-data-access`
+- **Estimasi:** M
+- **Tujuan:** menyediakan pola akses database konsisten yang menggunakan role sesuai konteks.
+- **Dependensi:** T-003, T-005.
+- **Scope:** implementasikan satu pilihan data-access dari keputusan PRD; koneksi publik dan privat terpisah; parameterized query; transaksi; penanganan error tanpa membocorkan data.
+- **Di luar scope:** seluruh endpoint fitur.
+- **Kemungkinan file:** `src/lib/db/*`, modul repository, integration tests, dokumentasi.
+- **Acceptance criteria:**
+  - [ ] Public code path hanya dapat meminta koneksi `app_public`.
+  - [ ] Private code path menggunakan `app_private` dan tidak tersedia bagi client.
+  - [ ] Query menggunakan parameter binding.
+  - [ ] Transaksi dapat di-rollback saat terjadi kegagalan.
+  - [ ] Secret koneksi hanya dibaca pada server.
+- **Tes:** unit test pemilihan koneksi; integration test query/rollback dan role; lint; verify.
+- **Laporan:** `docs/reports/T-006-data-access.md`.
+
+## T-007 — Kerangka test dan script verify lokal
+
+- **Repo:** sama.
+- **Branch:** `agent/T-007-local-verify`
+- **Estimasi:** M
+- **Tujuan:** membuat satu entry point verifikasi lokal sesuai AGENTS.
+- **Dependensi:** T-001; integrasikan hasil T-004 sampai T-006.
+- **Scope:** unit test runner; integration test PostgreSQL; `scripts/verify.sh`; secret scanning lokal (misalnya gitleaks setelah ketersediaan/instalasi diverifikasi); exit code non-zero saat ada kegagalan; dokumentasi setup.
+- **Di luar scope:** GitHub Actions atau CI remote.
+- **Kemungkinan file:** `scripts/verify.sh`, konfigurasi test, `tests/*`, README.
+- **Acceptance criteria:**
+  - [ ] Satu perintah menjalankan lint, test, dan secret scan.
+  - [ ] Kegagalan salah satu tahap membuat script gagal.
+  - [ ] Integration test berjalan terhadap PostgreSQL, bukan mock privilege.
+  - [ ] Script tidak mencetak nilai secret.
+  - [ ] Tidak ada workflow GitHub Actions ditambahkan.
+- **Tes:** jalankan script pada kondisi lulus dan uji simulasi kegagalan tiap tahap; catat output ringkas.
+- **Laporan:** `docs/reports/T-007-local-verify.md`.
+
+## T-008 — Tes boundary keamanan fase foundation
+
+- **Repo:** sama.
+- **Branch:** `agent/T-008-foundation-security-tests`
+- **Estimasi:** M
+- **Tujuan:** mengunci pengujian otomatis untuk boundary publik/privat sejak awal.
+- **Dependensi:** T-005, T-006, T-007.
+- **Scope:** tes role publik tidak dapat membaca `records`; tes server route privat menolak request tanpa sesi (gunakan stub/session boundary sementara bila modul auth belum dibangun, jangan membuat bypass produksi); dokumentasi threat boundary.
+- **Di luar scope:** autentikasi final dan halaman rekam kulit.
+- **Kemungkinan file:** integration/security tests, test helpers, `docs/security/*`.
+- **Acceptance criteria:**
+  - [ ] Tes negatif akses DB publik ke records lulus karena akses ditolak.
+  - [ ] Tidak ada test helper yang membuka bypass pada production build.
+  - [ ] Boundary privat terdokumentasi dan siap diperketat oleh modul auth.
+  - [ ] Semua tes dapat dijalankan lokal.
+- **Tes:** integration security tests; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-008-foundation-security-tests.md`.
+
+**Gerbang fase 0:** seluruh T-001 sampai T-008 merged dan lolos audit; database privilege separation terbukti.
+
+---
+
+# Fase 1 — Booking publik
+
+## T-009 — Kontrak domain booking dan status
+
+- **Repo:** sama.
+- **Branch:** `agent/T-009-booking-contract`
+- **Estimasi:** S
+- **Tujuan:** menetapkan aturan domain booking sebelum implementasi slot dan UI.
+- **Dependensi:** T-008.
+- **Scope:** definisi status booking, transisi status, timezone Asia/Jakarta, durasi, jeda, provider, batas tanggal pemesanan, dan semantik “permintaan diterima” versus “dikonfirmasi”.
+- **Di luar scope:** tampilan halaman.
+- **Kemungkinan file:** domain types, dokumentasi domain, unit tests.
+- **Acceptance criteria:**
+  - [ ] Status dan transisinya terdokumentasi serta tervalidasi.
+  - [ ] Request baru tidak dianggap confirmed secara otomatis.
+  - [ ] Aturan timezone dan interval booking eksplisit.
+  - [ ] Edge case pembatalan/perubahan jadwal dicatat.
+- **Tes:** unit tests untuk validasi status/transisi dan aturan waktu.
+- **Laporan:** `docs/reports/T-009-booking-contract.md`.
+
+## T-010 — Query konfigurasi publik yang aman
+
+- **Repo:** sama.
+- **Branch:** `agent/T-010-public-booking-config`
+- **Estimasi:** M
+- **Tujuan:** menampilkan treatment, provider yang boleh ditampilkan, dan informasi jam kerja tanpa membuka tabel privat.
+- **Dependensi:** T-005, T-006, T-009.
+- **Scope:** implementasikan kontrak baca publik yang disetujui; gunakan function/view dengan output terbatas; validasi field yang boleh keluar.
+- **Di luar scope:** halaman admin untuk mengubah konfigurasi.
+- **Kemungkinan file:** SQL migration, server repository, route handler, integration tests.
+- **Acceptance criteria:**
+  - [ ] Public query hanya mengembalikan data konfigurasi yang memang boleh diketahui.
+  - [ ] Tidak ada nama pelanggan, nomor WA, atau data records pada hasil.
+  - [ ] Koneksi menggunakan `app_public`.
+  - [ ] Tidak ada grant SELECT luas pada tabel operasional tanpa persetujuan.
+- **Tes:** integration test bentuk output dan privilege; verify.
+- **Laporan:** `docs/reports/T-010-public-booking-config.md`.
+
+## T-011 — Mesin kalkulasi slot server-side
+
+- **Repo:** sama.
+- **Branch:** `agent/T-011-slot-engine`
+- **Estimasi:** L
+- **Tujuan:** menghitung slot yang tersedia berdasarkan aturan operasional.
+- **Dependensi:** T-009, T-010.
+- **Scope:** kalkulasi slot di server; Asia/Jakarta; jam kerja; durasi treatment; jeda; provider; booking yang masih memblokir slot; validasi batas tanggal.
+- **Di luar scope:** UI booking dan notifikasi.
+- **Kemungkinan file:** domain service slot, query/function DB, unit/integration tests.
+- **Acceptance criteria:**
+  - [ ] Slot dihitung server-side dan tidak mempercayai slot dari browser.
+  - [ ] Slot di luar jam kerja atau dalam jeda tidak ditawarkan.
+  - [ ] Slot memperhitungkan durasi treatment dan provider.
+  - [ ] Timezone tidak bergantung pada timezone mesin klien.
+  - [ ] Tidak ada data identitas booking lain yang dikembalikan.
+- **Tes:** unit tests boundary waktu, DST tidak relevan untuk Asia/Jakarta tetapi offset harus eksplisit; integration test dengan booking sintetis.
+- **Laporan:** `docs/reports/T-011-slot-engine.md`.
+
+## T-012 — Pembuatan booking dan collision prevention
+
+- **Repo:** sama.
+- **Branch:** `agent/T-012-booking-create`
+- **Estimasi:** L
+- **Tujuan:** menyimpan booking secara aman dan mencegah double booking.
+- **Dependensi:** T-005, T-006, T-009, T-011.
+- **Scope:** server action/route untuk create; normalisasi nomor WA; validasi treatment/provider/date/time; transaksi dan constraint/locking yang tepat; response aman.
+- **Di luar scope:** integrasi WhatsApp API atau konfirmasi otomatis.
+- **Kemungkinan file:** booking service/repository, route handler, SQL migration tambahan, integration tests.
+- **Acceptance criteria:**
+  - [ ] Server memvalidasi ulang seluruh field.
+  - [ ] Request memakai role `app_public`.
+  - [ ] Dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
+  - [ ] Nomor WA dinormalisasi dengan satu aturan konsisten.
+  - [ ] Response tidak mengungkap detail booking pihak lain.
+- **Tes:** integration test concurrency dan invalid input pada PostgreSQL; verify.
+- **Laporan:** `docs/reports/T-012-booking-create.md`.
+
+## T-013 — UI halaman booking Bahasa Indonesia
+
+- **Repo:** sama.
+- **Branch:** `agent/T-013-booking-ui`
+- **Estimasi:** M
+- **Tujuan:** membangun halaman booking mobile-first dengan lima field.
+- **Dependensi:** T-010, T-011, T-012.
+- **Scope:** identitas visual Dacie Beauty clean/premium; form berisi nama, WhatsApp, treatment, tanggal, waktu; state loading/error/success; aksesibilitas dasar; responsif.
+- **Di luar scope:** form keluhan kulit, upload foto, akun pelanggan, pembayaran.
+- **Kemungkinan file:** `src/app/(booking)/*`, components booking, styles, UI tests.
+- **Acceptance criteria:**
+  - [ ] Form hanya meminta lima field yang disetujui.
+  - [ ] Seluruh label dan pesan UI berbahasa Indonesia.
+  - [ ] Slot berasal dari API server.
+  - [ ] UI membedakan permintaan diterima dari booking dikonfirmasi.
+  - [ ] Tampilan usable pada viewport mobile.
+  - [ ] Form memiliki label, fokus keyboard, dan pesan error yang dapat dipahami.
+- **Tes:** component/UI tests; responsive check; lint; verify.
+- **Laporan:** `docs/reports/T-013-booking-ui.md`.
+
+## T-014 — Proteksi abuse untuk endpoint publik
+
+- **Repo:** sama.
+- **Branch:** `agent/T-014-booking-abuse-protection`
+- **Estimasi:** M
+- **Tujuan:** mengurangi spam dan penyalahgunaan form booking.
+- **Dependensi:** T-012, T-013.
+- **Scope:** rate limiting yang sesuai arsitektur; validasi format WA; CAPTCHA gratis jika batas dan ketentuan sudah diverifikasi; error handling dan logging tanpa PII.
+- **Di luar scope:** layanan CAPTCHA berbayar atau WhatsApp API.
+- **Kemungkinan file:** middleware/route protection, validation schema, config, tests, docs.
+- **Acceptance criteria:**
+  - [ ] Rate limit berlaku di server dan memiliki perilaku saat limit terlampaui.
+  - [ ] Validasi WA konsisten dengan normalisasi database.
+  - [ ] Secret CAPTCHA (jika digunakan) hanya server-side.
+  - [ ] CAPTCHA tidak diaktifkan dengan konfigurasi yang belum diverifikasi.
+  - [ ] Log tidak berisi nama, nomor WA, atau data form lengkap.
+- **Tes:** unit/integration tests rate limit dan validation; test konfigurasi CAPTCHA; verify.
+- **Laporan:** `docs/reports/T-014-booking-abuse-protection.md`.
+
+## T-015 — E2E dan hardening alur booking
+
+- **Repo:** sama.
+- **Branch:** `agent/T-015-booking-e2e`
+- **Estimasi:** L
+- **Tujuan:** memastikan alur booking publik bekerja end-to-end.
+- **Dependensi:** T-011 sampai T-014.
+- **Scope:** Playwright booking berhasil; validasi gagal; slot tidak tersedia; dua submit bersamaan; verifikasi tidak ada data privat pada response.
+- **Di luar scope:** pengujian produksi dengan data pelanggan.
+- **Kemungkinan file:** `tests/e2e/*`, Playwright config, test fixtures sintetis, docs.
+- **Acceptance criteria:**
+  - [ ] E2E membuat booking sintetis dari UI sampai database.
+  - [ ] E2E memverifikasi status request bukan confirmed otomatis.
+  - [ ] E2E slot penuh/invalid menampilkan hasil aman.
+  - [ ] Concurrency/double booking diuji di integration test.
+  - [ ] Tes tidak menggunakan data pribadi nyata.
+- **Tes:** Playwright; integration suite; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-015-booking-e2e.md`.
+
+**Gerbang fase 1:** seluruh T-009 sampai T-015 merged dan lolos audit; alur booking publik stabil dan tidak dapat mengakses records.
+
+---
+
+# Fase 2 — Rekam kulit privat
+
+## T-016 — Pemisahan hostname dan route privat
+
+- **Repo:** sama.
+- **Branch:** `agent/T-016-private-boundary`
+- **Estimasi:** M
+- **Tujuan:** memastikan area privat hanya disajikan pada hostname privat.
+- **Dependensi:** T-008, T-015.
+- **Scope:** konfigurasi host/origin yang tervalidasi; route group privat; penolakan route privat pada hostname booking; trusted host/proxy handling.
+- **Di luar scope:** konfigurasi Cloudflare produksi.
+- **Kemungkinan file:** middleware/server host guard, route groups, tests, docs.
+- **Acceptance criteria:**
+  - [ ] Route privat menolak request dari hostname booking.
+  - [ ] Pemeriksaan dilakukan di server, bukan hanya menyembunyikan link.
+  - [ ] Host header tidak dipercaya tanpa validasi.
+  - [ ] Test mencakup hostname yang diizinkan dan ditolak.
+- **Tes:** integration/E2E host boundary; verify.
+- **Laporan:** `docs/reports/T-016-private-boundary.md`.
+
+## T-017 — Autentikasi dua akun tanpa registrasi
+
+- **Repo:** sama.
+- **Branch:** `agent/T-017-private-auth`
+- **Estimasi:** L
+- **Tujuan:** menyediakan login untuk tepat dua akun yang diizinkan.
+- **Dependensi:** T-006, T-016.
+- **Scope:** pilih dan implementasikan pendekatan auth yang disetujui PRD; password hashing kuat (misalnya Argon2id setelah verifikasi dukungan); bootstrap dua akun melalui prosedur aman; tanpa registration route.
+- **Di luar scope:** 2FA dan SSO.
+- **Kemungkinan file:** auth service, login route/page, migrations, admin bootstrap script, tests.
+- **Acceptance criteria:**
+  - [ ] Tidak ada endpoint pendaftaran publik.
+  - [ ] Hanya dua akun yang diizinkan dapat dibuat/diaktifkan.
+  - [ ] Password disimpan sebagai hash, bukan plaintext.
+  - [ ] Kredensial awal tidak dikomit atau ditulis ke laporan.
+  - [ ] Login gagal tidak membocorkan apakah email tertentu terdaftar.
+- **Tes:** unit/integration auth tests; negative registration tests; verify.
+- **Laporan:** `docs/reports/T-017-private-auth.md`.
+
+## T-018 — Sesi aman dan proteksi percobaan login
+
+- **Repo:** sama.
+- **Branch:** `agent/T-018-session-security`
+- **Estimasi:** M
+- **Tujuan:** melindungi sesi autentikasi dan mengurangi brute force.
+- **Dependensi:** T-017.
+- **Scope:** session expiry; invalidation/logout; cookie Secure, HttpOnly, SameSite; CSRF protection sesuai mekanisme; rate limit login; rotasi session ID setelah login.
+- **Di luar scope:** 2FA.
+- **Kemungkinan file:** session module, middleware, auth routes, tests, docs.
+- **Acceptance criteria:**
+  - [ ] Cookie sesi memiliki atribut keamanan sesuai deployment HTTPS.
+  - [ ] Sesi memiliki masa berlaku dan dapat diakhiri.
+  - [ ] Session identifier dirotasi setelah autentikasi.
+  - [ ] Percobaan login dibatasi.
+  - [ ] Mutasi state terlindungi dari CSRF sesuai pola framework.
+- **Tes:** integration tests cookie/session/logout/rate limit/CSRF; verify.
+- **Laporan:** `docs/reports/T-018-session-security.md`.
+
+## T-019 — Otorisasi privat dan koneksi app_private
+
+- **Repo:** sama.
+- **Branch:** `agent/T-019-private-authorization`
+- **Estimasi:** L
+- **Tujuan:** memastikan seluruh operasi rekam kulit dilindungi autentikasi dan memakai DB role privat.
+- **Dependensi:** T-005, T-006, T-017, T-018.
+- **Scope:** server-side auth guard; helper otorisasi; koneksi DB privat; penolakan unauthorized/forbidden; tes route dan service.
+- **Di luar scope:** CRUD profil pelanggan.
+- **Kemungkinan file:** auth guard, private data access, route handlers, tests.
+- **Acceptance criteria:**
+  - [ ] Setiap route privat memeriksa sesi di server.
+  - [ ] Semua operasi records menggunakan `app_private`.
+  - [ ] Public route tidak dapat memanggil helper/koneksi privat.
+  - [ ] Request tanpa sesi ditolak tanpa membocorkan data.
+  - [ ] Test negatif untuk role dan route tersedia.
+- **Tes:** integration tests dengan dua role DB dan berbagai status sesi; verify.
+- **Laporan:** `docs/reports/T-019-private-authorization.md`.
+
+## T-020 — Profil pelanggan dan pencarian
+
+- **Repo:** sama.
+- **Branch:** `agent/T-020-customer-profiles`
+- **Estimasi:** M
+- **Tujuan:** mengelola daftar dan profil pelanggan pada area privat.
+- **Dependensi:** T-019.
+- **Scope:** daftar pelanggan; pencarian nama; profil berisi nama, WA ternormalisasi, tipe kulit, keluhan utama, alergi/sensitivitas, catatan; validasi server.
+- **Di luar scope:** foto before-after dan import massal.
+- **Kemungkinan file:** customer service/repository, private routes/pages, forms, tests.
+- **Acceptance criteria:**
+  - [ ] Hanya pengguna terautentikasi dapat mencari/membaca/mengubah profil.
+  - [ ] Nomor WA disimpan dalam format normalisasi yang konsisten.
+  - [ ] Pencarian nama tidak mengembalikan data di luar area privat.
+  - [ ] Validasi dan batas panjang input diterapkan di server.
+  - [ ] Tidak ada PII pada log umum.
+- **Tes:** integration CRUD/search; auth negative tests; UI tests; verify.
+- **Laporan:** `docs/reports/T-020-customer-profiles.md`.
+
+## T-021 — Persetujuan dan alur privasi pelanggan
+
+- **Repo:** sama.
+- **Branch:** `agent/T-021-customer-consent-privacy`
+- **Estimasi:** M
+- **Tujuan:** mencatat persetujuan dan menyediakan penanganan permintaan penghapusan/anonymisasi.
+- **Dependensi:** T-020.
+- **Scope:** consent timestamp dan consent text version; tampilkan status consent; alur permintaan penghapusan/anonymisasi yang aman; catat keputusan dan hasil.
+- **Di luar scope:** klaim sertifikasi/kepatuhan hukum.
+- **Kemungkinan file:** migration, consent service/UI, privacy workflow, tests, docs.
+- **Acceptance criteria:**
+  - [ ] Catatan consent menyimpan waktu dan versi teks yang disetujui.
+  - [ ] Versi teks consent dapat ditelusuri.
+  - [ ] Permintaan penghapusan/anonymisasi tidak dieksekusi diam-diam tanpa otorisasi.
+  - [ ] Dampak terhadap riwayat booking/audit dan kewajiban retensi didokumentasikan.
+  - [ ] Teks final ditandai untuk review hukum bila diperlukan.
+- **Tes:** integration tests consent, versioning, authorization, dan deletion workflow; verify.
+- **Laporan:** `docs/reports/T-021-customer-consent-privacy.md`.
+
+## T-022 — Riwayat kunjungan perawatan
+
+- **Repo:** sama.
+- **Branch:** `agent/T-022-visit-history`
+- **Estimasi:** M
+- **Tujuan:** menyimpan riwayat kunjungan dan catatan perawatan.
+- **Dependensi:** T-020, T-021.
+- **Scope:** tanggal kunjungan; treatment; catatan kondisi kulit; produk digunakan; rekomendasi; tanggal follow-up; created_by; UI tambah/edit/detail sesuai izin.
+- **Di luar scope:** diagnosis medis otomatis, rekomendasi AI, foto before-after.
+- **Kemungkinan file:** visit repository/service, private pages/forms, migrations, tests.
+- **Acceptance criteria:**
+  - [ ] Kunjungan selalu terhubung ke customer yang valid.
+  - [ ] Created_by mencatat akun privat yang membuat catatan.
+  - [ ] Data hanya dapat diakses melalui server privat.
+  - [ ] Input tervalidasi dan tidak mengklaim diagnosis medis.
+  - [ ] Riwayat ditampilkan urut dan jelas.
+- **Tes:** integration CRUD dan authorization; UI tests; verify.
+- **Laporan:** `docs/reports/T-022-visit-history.md`.
+
+## T-023 — Penanda follow-up 25 hari
+
+- **Repo:** sama.
+- **Branch:** `agent/T-023-follow-up-marker`
+- **Estimasi:** S
+- **Tujuan:** menandai pelanggan yang kunjungan terakhirnya sudah mencapai ambang follow-up.
+- **Dependensi:** T-022.
+- **Scope:** aturan hitung berdasarkan tanggal Asia/Jakarta; indikator pada daftar pelanggan/dashboard privat; penanganan jika belum pernah berkunjung.
+- **Di luar scope:** pengiriman reminder otomatis.
+- **Kemungkinan file:** domain service/query, UI indicator, unit tests.
+- **Acceptance criteria:**
+  - [ ] Penanda muncul ketika kunjungan terakhir >=25 hari sesuai definisi PRD.
+  - [ ] Pelanggan tanpa kunjungan tidak salah ditandai.
+  - [ ] Perhitungan konsisten pada timezone Asia/Jakarta.
+  - [ ] Tidak ada pesan otomatis yang dikirim.
+- **Tes:** unit tests batas 24/25 hari, tanggal lintas bulan/tahun, dan tanpa kunjungan; verify.
+- **Laporan:** `docs/reports/T-023-follow-up-marker.md`.
+
+## T-024 — Daftar booking pada dashboard privat
+
+- **Repo:** sama.
+- **Branch:** `agent/T-024-private-booking-list`
+- **Estimasi:** M
+- **Tujuan:** menampilkan booking untuk pemilik dan istri.
+- **Dependensi:** T-019, T-012.
+- **Scope:** daftar booking dan filter tanggal/status; detail yang diperlukan; baca melalui `app_private`; jangan mengubah data booking dari jalur publik.
+- **Di luar scope:** integrasi kalender eksternal.
+- **Kemungkinan file:** booking private repository, dashboard pages, tests.
+- **Acceptance criteria:**
+  - [ ] Hanya dua akun privat dapat melihat daftar.
+  - [ ] Data berasal dari schema booking melalui koneksi privat.
+  - [ ] Filter tanggal/status berjalan di server.
+  - [ ] Tidak ada data booking privat yang bocor ke public response.
+- **Tes:** integration query; authorization tests; UI tests; verify.
+- **Laporan:** `docs/reports/T-024-private-booking-list.md`.
+
+## T-025 — Konfirmasi manual dan buka/buat rekam kulit
+
+- **Repo:** sama.
+- **Branch:** `agent/T-025-booking-customer-link`
+- **Estimasi:** L
+- **Tujuan:** menghubungkan alur booking ke proses kerja manual pemilik.
+- **Dependensi:** T-020, T-021, T-024.
+- **Scope:** tombol konfirmasi manual; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil dengan langkah yang jelas dan catatan consent sesuai aturan.
+- **Di luar scope:** WhatsApp API, pengiriman otomatis, auto-merge profil.
+- **Kemungkinan file:** booking actions, customer matching service, WhatsApp link helper, UI, tests.
+- **Acceptance criteria:**
+  - [ ] Link WhatsApp dibuat dari nomor yang sudah dinormalisasi dan pesan yang di-encode dengan benar.
+  - [ ] Pesan pembuka dapat diedit dari pengaturan privat.
+  - [ ] Pencocokan WA dilakukan di server dan hanya pada area privat.
+  - [ ] Jika ada kecocokan, pengguna dapat membuka profil yang sesuai.
+  - [ ] Jika tidak ada kecocokan, pembuatan profil memerlukan tindakan eksplisit.
+  - [ ] Tidak ada penggabungan otomatis yang berisiko menyatukan dua orang berbeda.
+- **Tes:** unit tests normalisasi/URL encoding; integration matching; auth tests; verify.
+- **Laporan:** `docs/reports/T-025-booking-customer-link.md`.
+
+## T-026 — Pengaturan treatment, provider, dan jam kerja
+
+- **Repo:** sama.
+- **Branch:** `agent/T-026-operations-settings`
+- **Estimasi:** M
+- **Tujuan:** memberi pemilik kendali atas pengaturan operasional booking.
+- **Dependensi:** T-019, T-010, T-011, T-012.
+- **Scope:** CRUD treatment, dua provider, jam kerja, durasi, jeda; validasi agar perubahan tidak membuat jadwal tidak masuk akal; public config tetap melalui kontrak aman.
+- **Di luar scope:** inventory, kasir, komisi.
+- **Kemungkinan file:** settings service/pages, migrations bila diperlukan, tests.
+- **Acceptance criteria:**
+  - [ ] Hanya akun privat dapat mengubah pengaturan.
+  - [ ] Validasi mencegah durasi/jam kerja invalid.
+  - [ ] Public booking membaca konfigurasi melalui interface publik yang dibatasi.
+  - [ ] Perubahan tidak mengubah booking historis secara tidak sengaja.
+  - [ ] Perubahan berdampak pada kalkulasi slot baru sesuai aturan.
+- **Tes:** integration CRUD; slot regression tests; authorization tests; verify.
+- **Laporan:** `docs/reports/T-026-operations-settings.md`.
+
+## T-027 — Audit log akses dan perubahan
+
+- **Repo:** sama.
+- **Branch:** `agent/T-027-audit-log`
+- **Estimasi:** M
+- **Tujuan:** mencatat siapa melihat atau mengubah record pelanggan dan kapan.
+- **Dependensi:** T-019, T-020, T-022.
+- **Scope:** event audit untuk read/view dan mutation yang ditetapkan PRD; actor; action; object reference; timestamp; UI/akses audit terbatas bila dibutuhkan.
+- **Di luar scope:** logging isi lengkap catatan kesehatan.
+- **Kemungkinan file:** audit service, middleware/wrapper, migration, tests, docs.
+- **Acceptance criteria:**
+  - [ ] Event akses/perubahan yang diwajibkan tercatat.
+  - [ ] Actor dan timestamp tercatat.
+  - [ ] Audit log tidak menyimpan salinan isi sensitif record.
+  - [ ] Pengguna biasa tidak dapat mengubah atau menghapus jejak audit.
+  - [ ] Kegagalan audit ditangani sesuai kebijakan yang terdokumentasi.
+- **Tes:** integration tests untuk view/create/update dan proteksi audit; verify.
+- **Laporan:** `docs/reports/T-027-audit-log.md`.
+
+## T-028 — E2E privat dan audit akses
+
+- **Repo:** sama.
+- **Branch:** `agent/T-028-private-e2e`
+- **Estimasi:** L
+- **Tujuan:** memverifikasi alur kerja privat dan seluruh boundary penting.
+- **Dependensi:** T-017 sampai T-027.
+- **Scope:** E2E login, cari/buat profil sintetis, tambah kunjungan, follow-up, lihat booking, buka link WhatsApp tanpa mengirim pesan; tes akses tanpa sesi dan host publik.
+- **Di luar scope:** pilot dengan data pelanggan nyata.
+- **Kemungkinan file:** `tests/e2e/private/*`, fixtures sintetis, docs.
+- **Acceptance criteria:**
+  - [ ] Alur privat utama lulus E2E.
+  - [ ] Tanpa sesi ditolak pada halaman dan API privat.
+  - [ ] Hostname booking tidak dapat membuka route privat.
+  - [ ] Public DB role tidak dapat membaca records.
+  - [ ] Data sintetis digunakan dan dibersihkan sesuai kebutuhan.
+  - [ ] Tidak ada screenshot/laporan yang mengandung data pribadi nyata.
+- **Tes:** Playwright; integration security tests; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-028-private-e2e.md`.
+
+**Gerbang fase 2:** seluruh T-016 sampai T-028 merged dan lolos audit keamanan serta fungsional.
+
+---
+
+# Fase 3 — Hardening dan release
+
+## T-029 — Checklist kesiapan produksi dan konfigurasi production
+
+- **Repo:** sama.
+- **Branch:** `agent/T-029-production-readiness`
+- **Estimasi:** M
+- **Tujuan:** menyiapkan konfigurasi produksi yang terpisah dari development.
+- **Dependensi:** T-028.
+- **Scope:** audit konfigurasi; production Compose; restart policy `unless-stopped`; healthcheck; volume persisten; least privilege; pengaturan log; dokumentasi konfigurasi.
+- **Di luar scope:** membuka port router atau menanam secret produksi di repo.
+- **Kemungkinan file:** `compose.prod.yaml` atau konfigurasi Compose terpisah, Dockerfile, docs/deployment.
+- **Acceptance criteria:**
+  - [ ] Development dan production configuration terpisah.
+  - [ ] Service memiliki restart policy yang sesuai.
+  - [ ] Database memakai volume persisten.
+  - [ ] Secret dipasok dari environment/secret file di host, tidak dikomit.
+  - [ ] Tidak ada port router yang perlu dibuka.
+- **Tes:** validasi Compose; deploy rehearsal lokal; restart service; verify.
+- **Laporan:** `docs/reports/T-029-production-readiness.md`.
+
+## T-030 — Deployment mini PC Linux
+
+- **Repo:** sama.
+- **Branch:** `agent/T-030-mini-pc-deploy`
+- **Estimasi:** M
+- **Tujuan:** menjalankan stack pada mini PC Linux target.
+- **Dependensi:** T-029.
+- **Scope:** panduan instalasi host; deploy container; volume; environment setup; pemeriksaan resource dan health; prosedur update/restart.
+- **Di luar scope:** konfigurasi Tunnel/Access.
+- **Kemungkinan file:** deployment docs, scripts operasional non-secret.
+- **Acceptance criteria:**
+  - [ ] App dan database berjalan pada perangkat target.
+  - [ ] Layanan pulih setelah container restart.
+  - [ ] Data tetap ada setelah restart.
+  - [ ] Tidak ada secret pada script atau repo.
+  - [ ] Instruksi dapat diulang oleh pemilik.
+- **Tes:** smoke test dari LAN; reboot/restart test; verifikasi volume.
+- **Laporan:** `docs/reports/T-030-mini-pc-deploy.md`.
+
+## T-031 — Cloudflare Tunnel dan dua hostname
+
+- **Repo:** sama.
+- **Branch:** `agent/T-031-cloudflare-tunnel`
+- **Estimasi:** M
+- **Tujuan:** menghubungkan hostname publik dan privat ke service yang tepat tanpa port forwarding.
+- **Dependensi:** T-016, T-030.
+- **Scope:** konfigurasi Tunnel; route `booking.<domain>` ke public app dan `rekam.<domain>` ke boundary privat; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini.
+- **Di luar scope:** menganggap Tunnel sebagai autentikasi aplikasi.
+- **Kemungkinan file:** deployment docs dan konfigurasi contoh tanpa token.
+- **Acceptance criteria:**
+  - [ ] Tidak ada token Tunnel dalam repository.
+  - [ ] Hostname booking menuju halaman booking publik.
+  - [ ] Hostname rekam menuju boundary privat.
+  - [ ] Tidak ada port router yang diekspos.
+  - [ ] Pengujian memastikan route privat tetap ditolak pada hostname publik.
+- **Tes:** smoke test dari jaringan eksternal; host routing tests; audit secret.
+- **Laporan:** `docs/reports/T-031-cloudflare-tunnel.md`.
+
+## T-032 — Cloudflare Access allowlist privat
+
+- **Repo:** sama.
+- **Branch:** `agent/T-032-cloudflare-access`
+- **Estimasi:** M
+- **Tujuan:** membatasi akses hostname privat hanya untuk dua email yang disetujui.
+- **Dependensi:** T-031.
+- **Scope:** konfigurasi Access allowlist dua email; dokumentasi enrollment; verifikasi fitur/batas paket resmi terkini; pertahankan login aplikasi.
+- **Di luar scope:** menghapus autentikasi aplikasi atau menambahkan akun ketiga.
+- **Kemungkinan file:** deployment/security docs, checklist konfigurasi dashboard (tanpa secret).
+- **Acceptance criteria:**
+  - [ ] Hanya dua email yang ditetapkan dapat melewati Access.
+  - [ ] Login aplikasi tetap diwajibkan setelah Access.
+  - [ ] Pengguna lain ditolak sebelum mencapai area privat.
+  - [ ] Batas paket dan kemampuan yang dipakai telah diverifikasi dan dicatat.
+  - [ ] Tidak ada klaim konfigurasi berhasil tanpa bukti pengujian.
+- **Tes:** uji allow dan deny menggunakan akun yang disetujui/tidak disetujui; tes login aplikasi; dokumentasikan hasil.
+- **Laporan:** `docs/reports/T-032-cloudflare-access.md`.
+
+## T-033 — Backup PostgreSQL terenkripsi
+
+- **Repo:** sama.
+- **Branch:** `agent/T-033-encrypted-backup`
+- **Estimasi:** M
+- **Tujuan:** membuat backup database harian dengan salinan lokal eksternal dan offsite.
+- **Dependensi:** T-030.
+- **Scope:** skrip backup; enkripsi; retensi; target disk eksternal; mekanisme salinan offsite; notifikasi/log status tanpa data sensitif; dokumentasi pemulihan kunci.
+- **Di luar scope:** menyimpan kunci enkripsi di samping satu-satunya salinan backup.
+- **Kemungkinan file:** `scripts/backup/*`, docs/operations, konfigurasi contoh.
+- **Acceptance criteria:**
+  - [ ] Backup terjadwal harian.
+  - [ ] File backup terenkripsi.
+  - [ ] Ada salinan pada disk eksternal dan satu salinan offsite.
+  - [ ] Kunci pemulihan tidak hanya disimpan pada host yang sama.
+  - [ ] Kegagalan backup dapat diketahui pemilik.
+  - [ ] Tidak ada isi backup atau secret dikomit.
+- **Tes:** jalankan backup sintetis; verifikasi file terenkripsi; uji dekripsi pada lingkungan terkontrol; dokumentasikan hasil.
+- **Laporan:** `docs/reports/T-033-encrypted-backup.md`.
+
+## T-034 — Restore drill dan runbook pemulihan
+
+- **Repo:** sama.
+- **Branch:** `agent/T-034-restore-drill`
+- **Estimasi:** L
+- **Tujuan:** membuktikan backup dapat dipulihkan dan prosedur recovery dapat diikuti.
+- **Dependensi:** T-033.
+- **Scope:** restore ke lingkungan terisolasi; verifikasi schema dan record sintetis; dokumentasikan langkah, waktu, prasyarat, dan kegagalan; runbook recovery.
+- **Di luar scope:** restore langsung menimpa produksi tanpa persetujuan.
+- **Kemungkinan file:** `docs/operations/restore-runbook.md`, scripts restore, test evidence sintetis.
+- **Acceptance criteria:**
+  - [ ] Restore dari backup terenkripsi berhasil pada lingkungan terisolasi.
+  - [ ] Struktur schema dan data sintetis tervalidasi.
+  - [ ] Langkah pemulihan dan kebutuhan kunci terdokumentasi.
+  - [ ] Tidak ada data pelanggan nyata dalam bukti laporan.
+  - [ ] Batasan RPO/RTO yang realistis dicatat sebagai target yang perlu disetujui pemilik.
+- **Tes:** restore drill penuh; smoke test aplikasi pada database hasil restore.
+- **Laporan:** `docs/reports/T-034-restore-drill.md`.
+
+## T-035 — Uji reboot dan pemulihan setelah listrik mati
+
+- **Repo:** sama.
+- **Branch:** `agent/T-035-power-recovery`
+- **Estimasi:** M
+- **Tujuan:** memastikan sistem kembali berjalan setelah host restart atau kehilangan daya.
+- **Dependensi:** T-030, T-034.
+- **Scope:** prosedur reboot terkontrol; validasi restart container/database; pemeriksaan konsistensi; recovery manual bila service gagal.
+- **Di luar scope:** menjanjikan uptime tanpa UPS atau monitoring eksternal.
+- **Kemungkinan file:** ops scripts/docs, checklist test.
+- **Acceptance criteria:**
+  - [ ] Setelah reboot host, container kembali berjalan sesuai policy.
+  - [ ] Database lulus pemeriksaan kesiapan.
+  - [ ] Aplikasi dapat melayani smoke test setelah database siap.
+  - [ ] Prosedur jika service gagal terdokumentasi.
+  - [ ] Tidak ada klaim bahwa kehilangan daya tidak mungkin merusak hardware/data.
+- **Tes:** reboot test terencana; smoke test; pemeriksaan database; catat hasil.
+- **Laporan:** `docs/reports/T-035-power-recovery.md`.
+
+## T-036 — Panduan migrasi VPS dan operasional
+
+- **Repo:** sama.
+- **Branch:** `agent/T-036-vps-migration-guide`
+- **Estimasi:** S
+- **Tujuan:** mendokumentasikan pemindahan aplikasi ke VPS tanpa ketergantungan vendor.
+- **Dependensi:** T-029, T-034.
+- **Scope:** panduan menyiapkan host; menyalin konfigurasi environment secara aman; memindahkan Compose; restore database; mengalihkan Tunnel/DNS; validasi pascamigrasi.
+- **Di luar scope:** benar-benar membeli VPS atau memindahkan produksi tanpa persetujuan.
+- **Kemungkinan file:** `docs/operations/vps-migration.md`, deployment docs.
+- **Acceptance criteria:**
+  - [ ] Langkah migrasi dapat diikuti tanpa bergantung pada layanan hosting tertentu.
+  - [ ] Tidak ada secret aktual dalam dokumen.
+  - [ ] Backup/restore menjadi jalur perpindahan database.
+  - [ ] Langkah validasi dan rollback terdokumentasi.
+- **Tes:** walkthrough dokumentasi menggunakan lingkungan rehearsal bila tersedia; periksa semua path dan perintah.
+- **Laporan:** `docs/reports/T-036-vps-migration-guide.md`.
+
+## T-037 — Pilot sintetis dan release sign-off
+
+- **Repo:** sama.
+- **Branch:** `agent/T-037-release-pilot`
+- **Estimasi:** M
+- **Tujuan:** menjalankan pemeriksaan akhir menggunakan data sintetis sebelum pemilik menyetujui penggunaan.
+- **Dependensi:** T-031 sampai T-036.
+- **Scope:** checklist booking, rekam kulit, Access, backup, restore, recovery; temuan; release notes; keputusan go/no-go.
+- **Di luar scope:** memasukkan data pelanggan nyata ke staging/test atau menyatakan kepatuhan hukum.
+- **Kemungkinan file:** `docs/release/*`, checklist pilot, laporan.
+- **Acceptance criteria:**
+  - [ ] Semua gerbang fase 0–3 memiliki bukti.
+  - [ ] Booking publik dan rekam kulit privat diuji dari jalur akses yang benar.
+  - [ ] Data sintetis digunakan.
+  - [ ] Backup dan restore drill memiliki hasil yang dapat ditinjau.
+  - [ ] Temuan kritis ditutup sebelum go-live.
+  - [ ] Keputusan go/no-go diberikan pemilik setelah audit.
+- **Tes:** checklist release end-to-end; `scripts/verify.sh`; smoke tests deployment; review laporan.
+- **Laporan:** `docs/reports/T-037-release-pilot.md`.
+
+**Gerbang fase 3:** T-029 sampai T-037 selesai, audit keamanan dan operasional lulus, dan pemilik memberikan persetujuan rilis.
+
+---
+
+## Ringkasan backlog
+
+| Fase | Rentang task | Jumlah |
+|---|---|---:|
+| 0 — Foundation | T-001–T-008 | 8 |
+| 1 — Booking publik | T-009–T-015 | 7 |
+| 2 — Rekam kulit privat | T-016–T-028 | 13 |
+| 3 — Hardening & release | T-029–T-037 | 9 |
+| **Total** | **T-001–T-037** | **37** |
+
+## Aturan perubahan backlog
+
+- Perubahan scope harus dicatat pada task dan laporan, bukan dilakukan diam-diam.
+- Jika acceptance criteria memerlukan perubahan PRD, agent berhenti dan mengajukan keputusan kepada pemilik.
+- Task baru diberi ID berikutnya; jangan memakai ulang ID yang sudah pernah dipakai.
+- Task tidak dianggap selesai hanya karena branch berhasil di-push. Selesai setelah laporan dan diff diaudit serta pemilik meng-merge.
+- Urutan fase tetap. Pemilik dapat menyetujui perubahan urutan task dalam fase bila dependensi tetap terpenuhi, tetapi tidak boleh melewati gerbang keamanan.
+
+**Catatan:** task list ini adalah rencana, bukan bukti bahwa implementasi atau tes telah dijalankan.
