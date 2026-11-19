@@ -250,23 +250,22 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** unit tests untuk validasi status/transisi dan aturan waktu.
 - **Laporan:** `docs/reports/T-009-booking-contract.md`.
 
-## T-010 — Query konfigurasi publik yang aman
+## T-010 — Implementasi get_public_config publik
 
 - **Repo:** sama.
 - **Branch:** `agent/T-010-public-booking-config`
 - **Estimasi:** M
-- **Tujuan:** menampilkan treatment, provider yang boleh ditampilkan, dan informasi jam kerja tanpa membuka tabel privat.
+- **Tujuan:** mengimplementasikan fungsi `booking.get_public_config()` sebagai kontrak baca konfigurasi publik yang terbatas.
 - **Dependensi:** T-005, T-006, T-009.
-- **Scope:** discovery dan penetapan kontrak data konfigurasi publik (treatment aktif, durasi, jam kerja/provider yang memang perlu ditampilkan). Implementasi function/view hanya boleh dilakukan setelah pemilik menyetujui perluasan kontrak `app_public`; tanpa persetujuan, task berhenti pada dokumentasi opsi dan risiko. Jangan memberi SELECT tabel langsung.
+- **Scope:** implementasi `booking.get_public_config()` sesuai D-02; treatment aktif (id, nama, durasi menit, jeda menit); jam kerja per provider aktif per hari (provider_id, hari, mulai, selesai, tanpa nama provider); pengecualian time_off; booking_rules; SECURITY DEFINER dengan owner/privilege/search_path sesuai T-005. `app_public` tetap tanpa privilege tabel.
 - **Di luar scope:** halaman admin untuk mengubah konfigurasi.
 - **Kemungkinan file:** SQL migration, server repository, route handler, integration tests.
 - **Acceptance criteria:**
-  - [ ] Keputusan pemilik tentang kontrak konfigurasi publik dicatat secara eksplisit.
-  - [ ] Jika disetujui, output hanya berisi field konfigurasi non-sensitif yang dibutuhkan halaman booking.
+  - [ ] Fungsi mengembalikan semua field D-02 dan tidak menyertakan nama provider atau data booking/customer.
   - [ ] Tidak ada nama pelanggan, nomor WA, atau data records pada hasil.
   - [ ] Koneksi menggunakan `app_public`.
   - [ ] Tidak ada grant SELECT luas pada tabel operasional.
-  - [ ] Jika keputusan belum ada, implementasi akses tambahan berstatus BLOCKED dan task tidak boleh dinyatakan selesai.
+  - [ ] `app_public` hanya dapat EXECUTE fungsi ini dan tidak dapat SELECT tabel konfigurasi.
 - **Tes:** integration test bentuk output dan privilege; verify.
 - **Laporan:** `docs/reports/T-010-public-booking-config.md`.
 
@@ -277,13 +276,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menghitung slot yang tersedia berdasarkan aturan operasional.
 - **Dependensi:** T-009, T-010.
-- **Scope:** kalkulasi slot di server; Asia/Jakarta; jam kerja; durasi treatment; jeda; provider; booking yang masih memblokir slot; validasi batas tanggal.
+- **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query blocked maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
 - **Di luar scope:** UI booking dan notifikasi.
 - **Kemungkinan file:** domain service slot, query/function DB, unit/integration tests.
 - **Acceptance criteria:**
   - [ ] Slot dihitung server-side dan tidak mempercayai slot dari browser.
   - [ ] Slot di luar jam kerja atau dalam jeda tidak ditawarkan.
-  - [ ] Slot memperhitungkan durasi treatment dan provider.
+  - [ ] Slot memperhitungkan durasi treatment, jeda, time_off, dan setiap provider aktif.
+  - [ ] UI menawarkan slot bila minimal satu provider kosong; pelanggan tidak memilih provider.
+  - [ ] Query blocked tidak meminta rentang lebih dari 35 hari.
   - [ ] Timezone tidak bergantung pada timezone mesin klien.
   - [ ] Tidak ada data identitas booking lain yang dikembalikan.
 - **Tes:** unit tests boundary waktu, DST tidak relevan untuk Asia/Jakarta tetapi offset harus eksplisit; integration test dengan booking sintetis.
@@ -296,12 +297,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menyimpan booking secara aman dan mencegah double booking.
 - **Dependensi:** T-005, T-006, T-009, T-011.
-- **Scope:** server action/route untuk create; normalisasi nomor WA; validasi treatment/provider/date/time; transaksi dan constraint/locking yang tepat; response aman.
+- **Scope:** pembuatan booking hanya melalui `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; normalisasi ulang WA; validasi aturan D-06; provider otomatis berdasarkan priority; constraint/locking untuk konkurensi; response hanya kode hasil yang ditentukan.
 - **Di luar scope:** integrasi WhatsApp API atau konfirmasi otomatis.
 - **Kemungkinan file:** booking service/repository, route handler, SQL migration tambahan, integration tests.
 - **Acceptance criteria:**
   - [ ] Server memvalidasi ulang seluruh field.
-  - [ ] Request memakai role `app_public`.
+  - [ ] Request memakai role `app_public` dan hanya memanggil fungsi `create_booking`; tidak ada INSERT langsung ke tabel booking.
+  - [ ] Batas maksimal dua booking aktif pending/confirmed dan belum lewat per WA ditegakkan di fungsi/database.
+  - [ ] Aturan langkah 30 menit, minimal 3 jam, maksimal 30 hari, dan pending tanpa expiry otomatis ditegakkan.
   - [ ] Dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
   - [ ] Nomor WA dinormalisasi dengan satu aturan konsisten.
   - [ ] Response tidak mengungkap detail booking pihak lain.
@@ -315,11 +318,13 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** membangun halaman booking mobile-first dengan lima field.
 - **Dependensi:** T-010, T-011, T-012.
-- **Scope:** identitas visual Dacie Beauty clean/premium; form berisi nama, WhatsApp, treatment, tanggal, waktu; state loading/error/success; aksesibilitas dasar; responsif.
+- **Scope:** identitas visual Dacie Beauty clean/premium; form berisi nama, WhatsApp, treatment, tanggal, waktu; state loading/error/success; aksesibilitas dasar; responsif; tampilkan satu kalimat pemberitahuan privasi statis di bawah tombol kirim dengan tautan ke halaman privasi.
 - **Di luar scope:** form keluhan kulit, upload foto, akun pelanggan, pembayaran.
 - **Kemungkinan file:** `src/app/(booking)/*`, components booking, styles, UI tests.
 - **Acceptance criteria:**
   - [ ] Form hanya meminta lima field yang disetujui.
+  - [ ] Pemberitahuan privasi statis di bawah tombol kirim menyatakan nama dan nomor WhatsApp hanya dipakai untuk konfirmasi jadwal dan memiliki tautan ke halaman privasi.
+  - [ ] Pemberitahuan privasi bukan field atau checkbox tambahan; teks final disiapkan pemilik dan ditandai untuk tinjauan hukum.
   - [ ] Seluruh label dan pesan UI berbahasa Indonesia.
   - [ ] Slot berasal dari API server.
   - [ ] UI membedakan permintaan diterima dari booking dikonfirmasi.
