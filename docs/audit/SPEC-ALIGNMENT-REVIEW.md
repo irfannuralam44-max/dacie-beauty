@@ -35,12 +35,11 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 **Temuan awal:** keputusan awal membatasi `app_public` pada pembuatan booking dan fungsi untuk membaca waktu terisi tanpa nama/kontak. Namun halaman booking membutuhkan daftar treatment aktif serta informasi durasi/jam kerja yang dapat berubah dari area privat. Task T-010 semula mengasumsikan fungsi/view tambahan dapat langsung dibuat.
 
 **Koreksi:**
-- T-010 diubah menjadi task discovery/keputusan kontrak.
-- Tidak boleh memberi SELECT tabel konfigurasi kepada `app_public`.
-- Function pembaca konfigurasi non-sensitif hanya boleh diimplementasikan setelah pemilik menyetujui perluasan kontrak secara eksplisit.
-- Pada saat review DOC-007, implementasi menunggu persetujuan. Status tersebut sudah digantikan keputusan D-02 pada DOC-008.
+- T-010 pada DOC-007 semula ditulis sebagai discovery/keputusan kontrak.
+- Keputusan terbaru D-02 pada DOC-008 menetapkan tiga fungsi publik terbatas dan melarang privilege tabel bagi app_public.
+- Catatan lama mengenai menunggu persetujuan hanya merupakan riwayat, bukan status implementasi saat ini.
 
-**Status:** belum diputuskan. Ini tercatat sebagai PRD K-02.
+**Status akhir:** diputuskan melalui D-02; gunakan PRD versi 1.2 dan backlog terbaru.
 
 ### R-03 — Konfirmasi booking memerlukan hak perubahan status yang belum didefinisikan
 
@@ -49,13 +48,11 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 **Temuan awal:** spesifikasi meminta pemilik/istri dapat mengonfirmasi booking dari area privat, tetapi role `app_private` secara eksplisit ditetapkan untuk membaca booking dan mengakses `records`. Tidak ada kontrak yang menjelaskan bagaimana status booking dapat diubah.
 
 **Koreksi:**
-- PRD menambahkan Catatan keberatan K-07.
-- Tidak boleh memberi UPDATE langsung pada tabel booking kepada `app_private` secara luas.
-- Rekomendasi yang diajukan: fungsi database sempit untuk transisi status yang diizinkan, dengan validasi transisi, audit, owner dan `search_path` aman, serta EXECUTE terbatas.
-- Rekomendasi ini bukan keputusan terkunci; perlu persetujuan pemilik sebelum tombol konfirmasi diimplementasikan.
-- Pada saat review DOC-007, T-025 menunggu keputusan. Status tersebut sudah digantikan keputusan D-03 pada DOC-008.
+- DOC-007 semula merekomendasikan fungsi database sempit dan melarang UPDATE langsung pada tabel bookings.
+- Keputusan terbaru D-03 pada DOC-008 menetapkan fungsi booking.set_booking_status, transisi status yang diizinkan, dan pencatatan booking.status_events.
+- T-025 pada backlog terbaru menggunakan fungsi tersebut; tidak ada status menunggu keputusan.
 
-**Status:** belum diputuskan. Fitur konfirmasi manual tetap merupakan kebutuhan produk, tetapi implementasinya menunggu kontrak privilege yang aman.
+**Status akhir:** diputuskan melalui D-03; gunakan PRD versi 1.2 dan backlog terbaru.
 
 ### R-04 — Dua hostname harus menuju dua instance dari satu image
 
