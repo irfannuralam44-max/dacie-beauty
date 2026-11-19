@@ -230,6 +230,46 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 
 ---
 
+## T-038 — Spike infrastruktur awal dua instance
+
+- **Repo:** sama.
+- **Branch:** `agent/T-038-infra-spike`
+- **Estimasi:** L
+- **Tujuan:** mengangkat risiko infrastruktur A-03/A-04 sebelum fitur booking dan rekam kulit dibangun.
+- **Dependensi:** T-008 (serta fondasi Docker Compose/environment dari T-002 dan T-003).
+- **Scope:** deploy halaman "hello" sintetis sebagai dua service dari satu image dengan `APP_MODE=public/private` pada mini PC; konfigurasi Cloudflare Tunnel untuk dua hostname `booking.<domain>` → `web-public` dan `rekam.<domain>` → `web-private`; lakukan satu uji Cloudflare Access dengan dua email yang dikonfigurasi di dashboard, bukan repository; verifikasi dan catat batas paket Access serta syarat/batas Turnstile gratis ke `docs/discovery/infra.md`, masing-masing dengan URL sumber dan tanggal pemeriksaan; tandai `perlu diverifikasi` jika belum dapat dibuktikan.
+- **Di luar scope:** fitur booking/records, data pelanggan, penyimpanan secret di repo, konfigurasi produksi final, klaim ketersediaan layanan/kuota yang belum diverifikasi.
+- **Kemungkinan file:** Compose/dev deployment example, halaman hello mode-specific, `docs/discovery/infra.md`, catatan smoke test tanpa secret.
+- **Acceptance criteria:**
+  - [ ] Dua service menjalankan satu image yang sama dengan APP_MODE berbeda pada mini PC.
+  - [ ] `booking.<domain>` mencapai web-public dan `rekam.<domain>` mencapai web-private melalui Tunnel.
+  - [ ] Route mode silang mengembalikan 404; host guard tetap aktif.
+  - [ ] Satu uji Access dilakukan dengan dua email yang dimasukkan melalui dashboard; email dan secret tidak masuk repo/laporan.
+  - [ ] `docs/discovery/infra.md` mencatat URL resmi, tanggal pemeriksaan, hasil dan batas paket Access serta syarat/batas Turnstile; hal yang belum terverifikasi diberi label `perlu diverifikasi`.
+  - [ ] Tidak ada data pelanggan nyata atau secret di lingkungan/repository/bukti.
+- **Tes:** validasi Compose; smoke test dua hostname dari jaringan eksternal; uji route silang 404; uji Access allow/deny sesuai dua akun yang disiapkan; pemeriksaan secret scan dan `scripts/verify.sh` jika tersedia.
+- **Laporan:** `docs/reports/T-038-infra-spike.md`.
+
+## T-039 — Seeder data sintetis bersama
+
+- **Repo:** sama.
+- **Branch:** `agent/T-039-synthetic-seeder`
+- **Estimasi:** M
+- **Tujuan:** menyediakan dataset sintetis konsisten untuk semua unit/integration/E2E tests.
+- **Dependensi:** T-005 (dan schema/migration T-004).
+- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan nomor yang jelas tidak mungkin nyata dan hanya untuk test (misalnya pola placeholder yang ditetapkan dalam test config); data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
+- **Di luar scope:** data pelanggan asli, nomor WA yang dapat dihubungi, seeding production, isi catatan sensitif nyata.
+- **Kemungkinan file:** `db/seed/*`, test fixtures, `tests/fixtures/*`, dokumentasi seeder.
+- **Acceptance criteria:**
+  - [ ] Seeder mengisi treatment, provider, jam kerja, dan customer fiktif.
+  - [ ] Semua nama customer diawali `Contoh`.
+  - [ ] Nomor WhatsApp seed jelas bukan nomor pelanggan/nomor yang dapat dihubungi dan hanya digunakan dalam test.
+  - [ ] Seeder dapat dijalankan berulang tanpa membuat duplikasi atau merusak data lain.
+  - [ ] Semua E2E/integration tests menggunakan dataset seeder/fixture sintetis ini.
+  - [ ] Seeder tidak dijalankan otomatis pada production.
+- **Tes:** jalankan seed pada database test kosong dan berulang; verifikasi jumlah/identitas fixture; jalankan test suite yang memakai fixtures; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-039-synthetic-seeder.md`.
+
 # Fase 1 — Booking publik
 
 ## T-009 — Kontrak domain booking dan status
