@@ -257,7 +257,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyediakan dataset sintetis konsisten untuk semua unit/integration/E2E tests.
 - **Dependensi:** T-005 (dan schema/migration T-004).
-- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan nomor yang jelas tidak mungkin nyata dan hanya untuk test (misalnya pola placeholder yang ditetapkan dalam test config); data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
+- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan nomor sentinel test-only `620000000000`, `620000000001`, dan seterusnya yang jelas tidak valid untuk pelanggan nyata; pastikan sentinel hanya diterima dalam environment test; data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
 - **Di luar scope:** data pelanggan asli, nomor WA yang dapat dihubungi, seeding production, isi catatan sensitif nyata.
 - **Kemungkinan file:** `db/seed/*`, test fixtures, `tests/fixtures/*`, dokumentasi seeder.
 - **Acceptance criteria:**
