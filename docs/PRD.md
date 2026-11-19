@@ -652,19 +652,25 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-01**. Satu codebase dan satu image Docker dijalankan sebagai dua instance terisolasi: `web-public` hanya memiliki kredensial/secret publik; `web-private` hanya memiliki kredensial/secret privat. Startup publik gagal bila menemukan secret privat.
 
-**Riwayat keberatan:** dua credential dalam satu proses dapat memperbesar dampak kompromi. Keputusan dua instance mengurangi paparan credential silang.
+**Riwayat keberatan asli:** bila kedua credential tersedia dalam environment proses Next.js yang sama, kompromi pada proses atau bug server-side di jalur publik dapat berpotensi membuka akses ke credential privat. Pemisahan role database melindungi dari kesalahan query biasa, tetapi tidak sepenuhnya mengisolasi dua trust domain dalam satu proses.
+
+**Mitigasi asli:** modul koneksi privat hanya boleh diimpor dari modul server privat; boundary import dan host diperiksa; tidak ada fungsi publik yang menerima pilihan role dari request; secrets tidak pernah dikirim ke client; audit dependency dan route handler; pertimbangkan isolasi proses/credential melalui deployment topology hanya jika arsitek menyetujui perubahan resmi.
 
 ### K-02 — Hak app_public untuk membaca konfigurasi booking
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-02**. `app_public` tanpa hak tabel; akses publik hanya melalui `get_public_config()`, `get_blocked_intervals()`, dan `create_booking()` dengan privilege fungsi yang dibatasi ketat.
 
-**Riwayat keberatan:** halaman publik memerlukan treatment aktif, jam kerja, durasi, jeda, time_off, dan aturan booking. Memberikan SELECT tabel langsung tidak diperbolehkan; fungsi terbatas memenuhi kebutuhan tanpa grant tabel.
+**Riwayat keberatan asli:** halaman publik memerlukan pilihan treatment aktif, jam kerja, durasi treatment, dan informasi yang cukup untuk menghitung slot. Hak yang disebutkan secara literal tidak memberi izin SELECT ke tabel konfigurasi. Di sisi lain, konfigurasi tersebut dapat berubah dari area privat. Jika fungsi database yang aman tidak disediakan untuk membaca konfigurasi non-sensitif, implementasi dapat terdorong memakai konfigurasi statis yang mudah tidak sinkron.
+
+**Catatan asli:** jangan diam-diam memberikan SELECT tabel konfigurasi kepada app_public. Arsitek perlu menentukan apakah fungsi database terbatas untuk membaca konfigurasi publik diperbolehkan sebagai penjabaran hak minimum, atau konfigurasi publik disediakan melalui mekanisme lain yang disetujui.
 
 ### K-03 — Kontrak fungsi slot publik
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-02** dan **D-05**. Output `get_blocked_intervals` dibatasi pada provider_id dan interval waktu untuk status pending/confirmed, maksimal rentang 35 hari; tanpa ID booking, nama, nomor, atau status.
 
-**Riwayat keberatan:** fungsi slot harus memberi data cukup untuk menghitung ketersediaan tanpa mengembalikan row booking mentah atau informasi pribadi.
+**Riwayat keberatan asli:** untuk menghitung slot kosong, server perlu tahu provider, durasi, jam kerja, jeda, status booking yang memblokir, serta rentang waktu. Output harus cukup untuk menghitung ketersediaan tanpa mengungkap pola operasional atau informasi pribadi lebih dari yang diperlukan. Kontrak fungsi perlu menetapkan parameter, granularitas waktu, status yang dihitung, dan aturan zona waktu.
+
+**Mitigasi asli:** spesifikasi fungsi dan test kebocoran output menjadi bagian task database/booking; jangan mengembalikan row booking mentah.
 
 ### K-04 — WhatsApp sebagai penghubung dua skema memiliki risiko salah taut
 
@@ -686,13 +692,17 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-01**. Satu codebase dan image Docker dijalankan sebagai dua instance; Tunnel mengarahkan masing-masing hostname ke service yang sesuai. Tiap instance 404 untuk route mode lain dan memakai host guard allowlist sebagai lapisan kedua.
 
-**Riwayat keberatan:** pemisahan UI atau redirect saja tidak cukup; route handler, server action, API, dan variasi host perlu ditolak secara eksplisit.
+**Riwayat keberatan asli:** pemisahan UI atau redirect bukan kontrol keamanan yang cukup. Route handler, server action, middleware, asset/API internal, dan variasi host dapat menjadi jalur tidak sengaja.
+
+**Mitigasi asli:** validasi host di server, allowlist eksplisit, blok akses lintas host, uji semua endpoint privat dari hostname publik, dan pastikan Cloudflare Access bukan satu-satunya lapisan autentikasi.
 
 ### K-07 — Hak app_private untuk mengubah status booking
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` tidak memiliki DML langsung pada `booking.bookings`; perubahan status hanya melalui `booking.set_booking_status` dengan transisi yang diizinkan dan pencatatan `status_events`.
 
-**Riwayat keberatan:** hak baca booking tidak otomatis memberi hak ubah status; UPDATE tabel luas akan memperbesar privilege.
+**Riwayat keberatan asli:** membaca booking tidak otomatis memberi hak untuk mengubah status. Memberi UPDATE langsung pada tabel booking.bookings kepada role app_private akan memperluas privilege dari keputusan awal.
+
+**Rekomendasi awal sebelum keputusan arsitek:** pertahankan pembacaan booking melalui app_private, lalu sediakan satu fungsi database terbatas untuk transisi status yang diizinkan (misalnya pending → confirmed/cancelled), dengan validasi transisi, audit, argumen minimum, owner terbatas, search_path aman, dan EXECUTE hanya untuk app_private. Jangan memberi UPDATE tabel secara luas. Keputusan final kemudian ditetapkan pada D-03.
 
 ### K-08 — Hak app_private untuk mengelola tabel konfigurasi booking
 
