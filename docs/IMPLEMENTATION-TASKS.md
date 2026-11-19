@@ -788,6 +788,26 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** jalankan backup sintetis; verifikasi file terenkripsi; uji dekripsi pada lingkungan terkontrol; dokumentasikan hasil.
 - **Laporan:** `docs/reports/T-033-encrypted-backup.md`.
 
+## T-040 — Pemantauan uptime dan peringatan backup
+
+- **Repo:** sama.
+- **Branch:** `agent/T-040-uptime-backup-alerts`
+- **Estimasi:** M
+- **Tujuan:** memberi tahu pemilik bila booking publik tidak dapat diakses atau backup gagal.
+- **Dependensi:** T-033.
+- **Scope:** pemeriksaan HTTP dari luar untuk `booking.<domain>`; notifikasi ringkas kepada pemilik bila pemeriksaan gagal; mekanisme peringatan bila proses backup T-033 gagal; verifikasi layanan gratis, batas, kebijakan privasi, dan URL sumber resmi beserta tanggal pemeriksaan; notifikasi hanya berisi status layanan/job dan waktu, tanpa nama, nomor WhatsApp, URL privat, data pelanggan, atau secret.
+- **Di luar scope:** monitoring payload/request, pengiriman data pelanggan ke layanan monitoring, jaminan uptime/SLA, layanan berbayar tanpa persetujuan.
+- **Kemungkinan file:** `docs/operations/monitoring.md`, skrip/status hook backup, konfigurasi contoh tanpa secret, runbook notifikasi.
+- **Acceptance criteria:**
+  - [ ] Pemeriksaan HTTP eksternal memantau hanya endpoint publik booking.
+  - [ ] Pemilik menerima notifikasi saat endpoint gagal dan pulih sesuai mekanisme yang dipilih.
+  - [ ] Kegagalan backup menghasilkan peringatan yang dapat ditindaklanjuti.
+  - [ ] Layanan gratis dan batas aktual diverifikasi dari sumber resmi; URL dan tanggal dicatat, yang belum terbukti diberi label `perlu diverifikasi`.
+  - [ ] Notifikasi tidak memuat PII, payload booking, credential, atau secret.
+  - [ ] Tidak ada klaim uptime atau kuota yang tidak didukung bukti.
+- **Tes:** simulasi endpoint gagal/pulih; simulasi backup gagal; verifikasi isi notifikasi sintetis; audit secret dan PII; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-040-uptime-backup-alerts.md`.
+
 ## T-034 — Restore drill dan runbook pemulihan
 
 - **Repo:** sama.
@@ -844,13 +864,33 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** walkthrough dokumentasi menggunakan lingkungan rehearsal bila tersedia; periksa semua path dan perintah.
 - **Laporan:** `docs/reports/T-036-vps-migration-guide.md`.
 
+## T-041 — Runbook akun dan secret
+
+- **Repo:** sama.
+- **Branch:** `agent/T-041-account-secret-runbook`
+- **Estimasi:** M
+- **Tujuan:** mendokumentasikan pembuatan dan pemulihan dua akun privat serta pengelolaan/rotasi secret, menutup A-13.
+- **Dependensi:** T-018, T-032, T-033.
+- **Scope:** prosedur pembuatan tepat dua akun; pemulihan akses ketika password/perangkat hilang; pergantian perangkat; rotasi session secret, credential database, CAPTCHA secret, Tunnel token, dan kunci backup sesuai urutan serta dampak; penyimpanan/pemulihan secret yang aman; verifikasi ulang login/Access/Tunnel/backup setelah rotasi.
+- **Di luar scope:** menambah akun ketiga, mencatat nilai secret aktual, menyimpan password atau token di repo, mengotomatisasi rotasi tanpa kontrol.
+- **Kemungkinan file:** `docs/operations/account-and-secret-runbook.md`, checklist recovery/rotation, diagram alur tanpa credential.
+- **Acceptance criteria:**
+  - [ ] Runbook hanya mengatur dua akun internal dan menjelaskan provisioning/disable/recovery.
+  - [ ] Langkah pemulihan akses dan pergantian perangkat dapat diikuti tanpa mengirim secret melalui chat.
+  - [ ] Rotasi setiap kategori secret dan dampaknya terhadap service terkait terdokumentasi.
+  - [ ] Prosedur memastikan web-public tetap tanpa secret privat dan web-private memakai secret yang sesuai.
+  - [ ] Backup encryption key dan recovery copy dibahas tanpa menuliskan nilainya.
+  - [ ] Tidak ada secret aktual atau data pribadi dalam dokumen.
+- **Tes:** walkthrough tabletop menggunakan placeholder sintetis; periksa urutan rotasi dan recovery; audit secret; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-041-account-secret-runbook.md`.
+
 ## T-037 — Pilot sintetis dan release sign-off
 
 - **Repo:** sama.
 - **Branch:** `agent/T-037-release-pilot`
 - **Estimasi:** M
 - **Tujuan:** menjalankan pemeriksaan akhir menggunakan data sintetis sebelum pemilik menyetujui penggunaan.
-- **Dependensi:** T-031 sampai T-036.
+- **Dependensi:** T-031 sampai T-036, T-040, dan T-041 (T-041 wajib selesai sebelum pilot/sign-off).
 - **Scope:** checklist booking, rekam kulit, Access, backup, restore, recovery; temuan; release notes; keputusan go/no-go.
 - **Di luar scope:** memasukkan data pelanggan nyata ke staging/test atau menyatakan kepatuhan hukum.
 - **Kemungkinan file:** `docs/release/*`, checklist pilot, laporan.
