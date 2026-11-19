@@ -85,7 +85,7 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 boleh memanfaatkan
 | 0.5 | Role database | Role `app_public` dan `app_private`, grant minimum, function slot sesuai kontrak yang disepakati | L |
 | 0.6 | Fondasi pengujian | Unit/integration test dasar dengan PostgreSQL, data sintetis | M |
 | 0.7 | Verifikasi lokal | `scripts/verify.sh` menjalankan lint, test, dan secret scan lokal | M |
-| 0.8 | Bukti isolasi | Tes membuktikan `app_public` tidak dapat membaca schema `records`; tes akses privat tanpa sesi ditolak | M |
+| 0.8 | Bukti isolasi | Tes membuktikan `app_public` tidak dapat membaca schema `records`; kontrak route privat didokumentasikan untuk diuji penuh saat autentikasi tersedia | M |
 | 0.9 | Dokumentasi agent | `AGENTS.md`, `CLAUDE.md`, skill, template laporan tersedia dan konsisten | S |
 
 ### Dependensi dan catatan
@@ -94,7 +94,7 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 boleh memanfaatkan
 - 0.2 dan 0.3 mendahului pengujian integrasi yang membutuhkan database.
 - 0.4 mendahului 0.5; grant dan function tidak boleh dibuat berdasarkan asumsi struktur tabel yang belum disepakati.
 - 0.8 adalah gerbang keamanan wajib, bukan pekerjaan opsional.
-- Keputusan akses konfigurasi publik seperti treatment dan jam kerja harus diselesaikan secara eksplisit. Jangan memberi `app_public` akses tabel secara luas hanya agar halaman booking dapat menampilkan konfigurasi.
+- Keputusan akses konfigurasi publik seperti treatment dan jam kerja harus diselesaikan secara eksplisit. Task konfigurasi publik tidak boleh mengimplementasikan function tambahan untuk `app_public` sebelum pemilik menyetujui kontraknya; jangan memberi akses tabel secara luas.\n- Hak untuk mengubah status booking dari area privat juga merupakan keputusan terbuka (PRD K-07); jangan memberi UPDATE langsung kepada `app_private` sebelum kontrak disetujui.
 - Pilihan driver database, pendekatan autentikasi, dan detail function slot mengikuti keputusan PRD atau hasil discovery yang dicatat. Hindari menambah dua pola data-access/auth sekaligus.
 
 ### Gerbang keluar fase 0
@@ -104,7 +104,7 @@ Fase 0 dinyatakan selesai hanya jika:
 - Migrasi dapat diterapkan dari database kosong secara berurutan dan hasilnya konsisten.
 - Dua role DB memiliki privilege minimum yang terdokumentasi.
 - Pengujian negatif membuktikan `app_public` tidak bisa membaca `records`.
-- Jalur privat menolak request tanpa sesi pada level server.
+- Kontrak host/route privat terdokumentasi; tes request tanpa sesi wajib diselesaikan pada fase 2 setelah autentikasi dan route privat dibangun.
 - `scripts/verify.sh` berjalan lokal dan hasilnya dicatat.
 - Tidak ada rahasia atau data pelanggan nyata di repo, fixture, atau laporan.
 - Auditor memberikan PASS atau PASS dengan catatan yang tidak menghalangi fase berikutnya.
@@ -129,7 +129,7 @@ Fase 0 dinyatakan selesai hanya jika:
 ### Dependensi dan catatan
 
 - 1.1 harus menetapkan semantik status: permintaan yang masuk belum otomatis berarti dikonfirmasi.
-- 1.2 harus mengikuti keputusan privilege fase 0. Public route hanya menggunakan koneksi/role `app_public`.
+- 1.2 harus mengikuti keputusan privilege fase 0 dan persetujuan pemilik atas kontrak konfigurasi publik. Sampai disetujui, jangan menambah privilege baru ke `app_public`.
 - 1.3 mendahului UI final karena UI harus mengikuti kontrak slot server-side.
 - 1.4 wajib diselesaikan sebelum booking dipakai pilot; pemeriksaan ketersediaan di UI saja tidak cukup.
 - 1.7 tidak boleh menjadi satu-satunya pertahanan terhadap bentrok atau input berbahaya.
