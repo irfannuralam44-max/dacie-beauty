@@ -30,7 +30,7 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 
 ### R-02 — Akses konfigurasi booking publik berpotensi memperluas hak app_public
 
-**Status historis:** ditutup oleh keputusan arsitek D-02 pada DOC-008. Konfigurasi publik dibaca melalui get_public_config tanpa privilege tabel bagi app_public.
+**Status saat DOC-007:** masih menunggu keputusan arsitek. **Status terbaru DOC-008:** ditutup oleh D-02; konfigurasi publik dibaca melalui get_public_config tanpa privilege tabel bagi app_public.
 
 **Temuan awal:** keputusan awal membatasi `app_public` pada pembuatan booking dan fungsi untuk membaca waktu terisi tanpa nama/kontak. Namun halaman booking membutuhkan daftar treatment aktif serta informasi durasi/jam kerja yang dapat berubah dari area privat. Task T-010 semula mengasumsikan fungsi/view tambahan dapat langsung dibuat.
 
@@ -38,13 +38,13 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 - T-010 diubah menjadi task discovery/keputusan kontrak.
 - Tidak boleh memberi SELECT tabel konfigurasi kepada `app_public`.
 - Function pembaca konfigurasi non-sensitif hanya boleh diimplementasikan setelah pemilik menyetujui perluasan kontrak secara eksplisit.
-- Bila belum disetujui, task tetap BLOCKED; agent tidak boleh menganggapnya selesai.
+- Pada saat review DOC-007, implementasi menunggu persetujuan. Status tersebut sudah digantikan keputusan D-02 pada DOC-008.
 
 **Status:** belum diputuskan. Ini tercatat sebagai PRD K-02.
 
 ### R-03 — Konfirmasi booking memerlukan hak perubahan status yang belum didefinisikan
 
-**Status historis:** ditutup oleh keputusan arsitek D-03 pada DOC-008. Perubahan status menggunakan set_booking_status; app_private tidak memiliki DML langsung pada bookings.
+**Status saat DOC-007:** masih menunggu keputusan arsitek. **Status terbaru DOC-008:** ditutup oleh D-03; perubahan status menggunakan set_booking_status dan app_private tidak memiliki DML langsung pada bookings.
 
 **Temuan awal:** spesifikasi meminta pemilik/istri dapat mengonfirmasi booking dari area privat, tetapi role `app_private` secara eksplisit ditetapkan untuk membaca booking dan mengakses `records`. Tidak ada kontrak yang menjelaskan bagaimana status booking dapat diubah.
 
@@ -53,15 +53,15 @@ Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada 
 - Tidak boleh memberi UPDATE langsung pada tabel booking kepada `app_private` secara luas.
 - Rekomendasi yang diajukan: fungsi database sempit untuk transisi status yang diizinkan, dengan validasi transisi, audit, owner dan `search_path` aman, serta EXECUTE terbatas.
 - Rekomendasi ini bukan keputusan terkunci; perlu persetujuan pemilik sebelum tombol konfirmasi diimplementasikan.
-- T-025 ditandai BLOCKED untuk aksi perubahan status sampai keputusan tersedia.
+- Pada saat review DOC-007, T-025 menunggu keputusan. Status tersebut sudah digantikan keputusan D-03 pada DOC-008.
 
 **Status:** belum diputuskan. Fitur konfirmasi manual tetap merupakan kebutuhan produk, tetapi implementasinya menunggu kontrak privilege yang aman.
 
-### R-04 — Dua hostname harus menuju satu aplikasi yang sama
+### R-04 — Dua hostname harus menuju dua instance dari satu image
 
 **Prioritas:** P2 — diperjelas.
 
-T-031 sekarang secara eksplisit menyatakan kedua hostname diarahkan ke instance aplikasi Next.js yang sama. Tidak boleh dibuat aplikasi kedua, fork, atau deployment aplikasi terpisah untuk area privat. Host guard di aplikasi menentukan route yang dapat dilayani pada masing-masing hostname.
+Keputusan D-01 pada DOC-008 menetapkan dua instance terpisah dari satu codebase dan satu image Docker: web-public dan web-private. Tidak boleh dibuat fork atau codebase aplikasi terpisah. Host guard di aplikasi menentukan route yang dapat dilayani pada masing-masing hostname.
 
 ### R-05 — Hardening host Linux kurang eksplisit pada backlog
 
@@ -85,7 +85,7 @@ T-008 semula meminta tes route privat tanpa sesi dengan stub sementara sebelum a
 
 - Bisnis Dacie Beauty di Cimahi, target pasar menengah atas, produk Theraskin dan Probeauty.
 - Tepat dua akun internal: pemilik dan istri, dengan identitas login terpisah.
-- Satu repository privat dan satu aplikasi Next.js App Router.
+- Satu repository privat, satu codebase dan satu image Docker, dijalankan sebagai dua instance Next.js App Router.
 - Dua hostname: `booking.<domain>` publik dan `rekam.<domain>` privat.
 - Tidak menggunakan fork Easy!Appointments, Supabase, atau Netlify.
 - Form publik hanya lima field: nama, WhatsApp, treatment, tanggal, dan jam.
@@ -129,7 +129,7 @@ Perbandingan GitHub pada saat review menunjukkan branch hasil review berada di d
 
 **Konsekuensi:** jangan mulai T-001 dari `main` sebelum dokumentasi ini digabungkan ke `main`. Instruksi agent mewajibkan branch task dibuat dari `main` yang sinkron, sehingga agent belum akan melihat PRD/AGENTS/skills bila dokumen belum masuk ke branch dasar.
 
-Langkah yang disarankan berikutnya adalah membuka Pull Request dari `docs/T-007-spec-alignment` ke `main`, meninjau dua keputusan terbuka K-02 dan K-07, lalu merge dokumentasi setelah pemilik menyetujuinya.
+Instruksi historis DOC-007 tersebut sudah digantikan: buka Pull Request dari `docs/DOC-008-architect-decisions` ke `main`, tinjau hasil DOC-008, lalu merge dokumentasi. Coding agent belum boleh memulai T-001 sebelum dokumen berada di main.
 
 ## 6. Status keputusan setelah DOC-008
 
@@ -142,5 +142,5 @@ Rincian keputusan D-01 sampai D-10 berada pada PRD versi 1.2, backlog, dan renca
 
 ---
 
-**Verdict review dokumentasi:** **PASS dengan dua keputusan terbuka yang menjadi gerbang implementasi (K-02 dan K-07).**  
+**Verdict DOC-007 (historis):** PASS dengan dua keputusan terbuka pada saat itu. Kedua keputusan kini ditutup melalui D-02 dan D-03 pada DOC-008. Laporan terbaru DOC-008 menjadi acuan.  
 **Status implementasi:** belum dimulai.
