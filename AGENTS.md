@@ -7,7 +7,7 @@ Jika instruksi task, percakapan, atau asumsi agent bertentangan dengan dokumen i
 ## 1. Identitas proyek dan sumber kebenaran
 
 - Repository: `irfannuralam44-max/dacie-beauty` (private).
-- Aplikasi: satu aplikasi Next.js App Router dalam satu repository.
+- Aplikasi: satu codebase Next.js App Router dan satu image Docker, dijalankan sebagai dua instance/service terpisah (`web-public` dan `web-private`).
 - Bahasa dokumentasi dan UI: Bahasa Indonesia.
 - Zona waktu bisnis: `Asia/Jakarta`.
 - Dokumen produk dan arsitektur: `docs/PRD.md`.
@@ -17,20 +17,33 @@ Jika instruksi task, percakapan, atau asumsi agent bertentangan dengan dokumen i
 
 ### 1.1 Keputusan arsitektur yang tidak boleh diubah sepihak
 
-1. Satu repo privat `dacie-beauty`, tanpa fork Easy!Appointments.
-2. Satu aplikasi Next.js, dua area dan dua hostname:
-   - `booking.<domain>`: publik.
-   - `rekam.<domain>`: privat, Cloudflare Access dan login aplikasi.
-3. Data booking berada pada skema PostgreSQL `booking`; data kulit/kesehatan hanya berada pada skema `records`.
-4. Role `app_public` hanya boleh membuat booking dan memanggil fungsi terbatas yang mengembalikan informasi waktu terisi tanpa nama/kontak. Role ini tidak memiliki hak apa pun atas `records`.
-5. Role `app_private` digunakan untuk area privat dan boleh mengakses data `records` serta membaca booking sesuai kebutuhan.
-6. Rute privat tidak boleh dilayani melalui hostname booking.
+1. Satu repo privat `dacie-beauty`, satu codebase Next.js, satu image Docker; dua instance/service terpisah dari image yang sama (`web-public`/`APP_MODE=public` dan `web-private`/`APP_MODE=private`). Tidak ada fork Easy!Appointments atau aplikasi/codebase terpisah.
+2. `web-public` hanya melayani `booking.<domain>`, hanya menerima kredensial `app_public` dan secret CAPTCHA, dan wajib gagal startup jika ada kredensial/secret privat. `web-private` hanya melayani `rekam.<domain>`, hanya menerima kredensial `app_private` dan secret sesi. Masing-masing mengembalikan 404 untuk route mode lain dan menggunakan host guard allowlist sebagai lapisan kedua. Cloudflare Tunnel memetakan setiap hostname ke service yang sesuai.
+3. Data booking berada pada skema PostgreSQL `booking`; data kulit/kesehatan hanya pada skema `records`.
+4. `app_public` tidak memiliki privilege tabel apa pun; hanya `USAGE` pada schema `booking`, `EXECUTE` pada `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(...)`; tidak memiliki `USAGE` pada `records`. Ketiga fungsi `SECURITY DEFINER` dimiliki role `NOLOGIN` khusus dengan hak minimum, `search_path` dikunci, objek dikualifikasi schema, dan EXECUTE hanya untuk `app_public`.
+5. `app_private` memiliki SELECT seluruh tabel `booking`; INSERT/UPDATE (tanpa DELETE) pada `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; tanpa DML langsung pada `bookings`; perubahan status hanya melalui `booking.set_booking_status(...)` dan dicatat ke `status_events`. Pada `records`, memiliki DML yang diperlukan tanpa DDL dan bukan pemilik objek.
+6. Route mode lain harus 404 pada level routing dan host guard allowlist tetap aktif sebagai lapisan kedua.
 7. Tepat dua akun privat; tidak ada pendaftaran publik.
 8. Stack Next.js App Router, TypeScript, React, Node.js LTS, PostgreSQL, Docker Compose, Linux, Cloudflare Tunnel. Tidak menggunakan Supabase atau Netlify.
 9. Tidak ada GitHub Actions atau CI jarak jauh.
-10. Semua test, lint, dan secret scanning dijalankan lokal melalui `scripts/verify.sh`.
+10. Semua test, lint, audit dependency, dan secret scanning dijalankan lokal melalui `scripts/verify.sh`.
 11. Agent tidak pernah push ke `main`. Merge hanya oleh pemilik setelah audit PASS.
 12. Test, seeder, screenshot, dan laporan hanya boleh memakai data sintetis.
+
+### 1.2 Pemetaan riwayat branch dokumen
+
+ID `T-XXX` mulai sekarang hanya digunakan untuk task implementasi. Pekerjaan dokumentasi menggunakan ID `DOC-XXX`. Branch historis tidak diganti namanya; pemetaannya:
+
+| Branch historis | ID dokumen |
+|---|---|
+| `docs/T-001-prd` | DOC-001 |
+| `docs/T-002-agent-guides` | DOC-002 |
+| `docs/T-003-agent-skills` | DOC-003 |
+| `docs/T-004-implementation-plan` | DOC-004 |
+| `docs/T-005-implementation-tasks` | DOC-005 |
+| `docs/T-006-agent-audit-kit` | DOC-006 |
+| `docs/T-007-spec-alignment` | DOC-007 |
+| `docs/DOC-008-architect-decisions` | DOC-008 |
 
 Jika implementasi menemui ketegangan teknis, dokumentasikan dalam laporan pada bagian keputusan/asumsi dan masalah tersisa. Jangan melemahkan pemisahan keamanan untuk membuat implementasi lebih mudah.
 
@@ -111,14 +124,19 @@ Setelah sinkronisasi, catat branch dasar dan commit awal di laporan.
 
 ### 5.2 Database
 
-- Gunakan koneksi role yang benar secara eksplisit: `app_public` untuk alur publik dan `app_private` untuk alur privat.
-- Jangan membuat fallback yang menjalankan query publik dengan role privat.
-- Jangan memberi `app_public` akses langsung ke tabel/skema `records`.
-- Jangan memberi hak database yang luas kepada `PUBLIC`, role aplikasi, atau role runtime.
+- Gunakan koneksi berdasarkan `APP_MODE`: instance public hanya boleh membuat pool `app_public`; instance private hanya boleh membuat pool `app_private`.
+- `web-public` tidak boleh memiliki kredensial atau secret privat dalam environment dan harus gagal startup bila ditemukan. Tidak boleh ada fallback dari public ke pool private.
+- `app_public` tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada tiga fungsi D-02, tanpa USAGE pada schema `records`.
+- `app_public` tidak boleh SELECT/INSERT/UPDATE/DELETE langsung pada tabel mana pun. Test wajib membuktikan SELECT dan INSERT langsung ditolak.
+- Fungsi publik `get_public_config`, `get_blocked_intervals`, dan `create_booking` menggunakan SECURITY DEFINER dengan owner NOLOGIN khusus berhak minimum, bukan superuser; search_path dikunci, semua objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya diberikan ke app_public.
+- `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi yang ditetapkan D-03; tidak memiliki DML langsung pada booking.bookings; perubahan status hanya melalui fungsi set_booking_status yang diaudit.
+- `app_private` memiliki DML yang diperlukan pada records tanpa hak DDL dan bukan pemilik objek.
+- Jangan membuat helper generik yang memungkinkan request memilih nama role atau pool.
 - Gunakan query berparameter dan transaksi untuk operasi yang memerlukan konsistensi.
 - Periksa hak akses default untuk tabel, sequence, dan function baru pada setiap migrasi.
-- Test lokal harus membuktikan akses `app_public` ke `records` ditolak oleh PostgreSQL sungguhan.
-- Fungsi yang dieksekusi role publik harus mengembalikan data minimum dan tidak mengungkap nama/kontak. Jika memakai `SECURITY DEFINER`, audit owner, privilege execute, argumen, dan `search_path`.\n- Jangan memperluas `app_public` untuk membaca daftar treatment/jam kerja sebelum kontrak fungsi konfigurasi publik diputuskan secara eksplisit oleh pemilik; jangan memberi SELECT tabel konfigurasi secara langsung.\n- `app_private` hanya membaca booking sesuai kontrak saat ini. Jangan memberi UPDATE langsung pada tabel booking untuk tombol konfirmasi; tunggu keputusan K-07 dan gunakan fungsi transisi status terbatas jika disetujui.
+- Test privilege menggunakan koneksi role sebenarnya pada PostgreSQL; test privilege tidak boleh hanya memeriksa katalog.
+- Jika memakai SECURITY DEFINER, audit owner, privilege execute, argumen, validasi, dan search_path. Detail sintaks dan dukungan extension PostgreSQL perlu diverifikasi pada task database.
+- Jangan menambahkan hak yang tidak ditetapkan D-02/D-03 tanpa revisi keputusan arsitektur.
 
 ### 5.3 Web dan autentikasi
 
@@ -263,8 +281,9 @@ git fetch origin --prune
 Periksa apakah `origin/main` bergerak dari base branch task:
 
 - Jika `origin/main` tidak bergerak, lanjutkan.
-- Jika `origin/main` bergerak, rebase branch task ke `origin/main`, selesaikan konflik dengan hati-hati, lalu jalankan ulang seluruh verifikasi.
-- Jika rebase tidak aman atau konflik tidak dapat diselesaikan dengan yakin, berhenti dan laporkan.
+- Rebase hanya diizinkan sebelum push pertama branch task. Jika branch belum pernah dipush dan `origin/main` bergerak, rebase branch task ke `origin/main`, selesaikan konflik dengan hati-hati, lalu jalankan ulang seluruh verifikasi.
+- Jika branch task sudah pernah dipush dan `origin/main` bergerak, jangan rebase. Gabungkan `origin/main` ke branch task dengan merge biasa tanpa force push, selesaikan konflik dengan hati-hati, jalankan ulang seluruh verifikasi, dan catat merge serta hasilnya di laporan.
+- Jika rebase/merge tidak aman atau konflik tidak dapat diselesaikan dengan yakin, berhenti dan laporkan.
 - Dilarang force push, termasuk `--force-with-lease`.
 - Dilarang push ke `main`.
 - Push hanya branch task yang sedang dikerjakan.
