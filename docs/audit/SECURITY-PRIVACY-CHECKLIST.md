@@ -83,6 +83,8 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 - [ ] Form booking tidak meminta keluhan kulit, alergi, atau data kesehatan.
 - [ ] Data rekam kulit hanya tersedia di area privat.
 - [ ] Data yang dikumpulkan sesuai tujuan dan scope PRD.
+- [ ] Profil identitas dasar (nama/WA) boleh dibuat sebelum consent bila diperlukan untuk alur booking.
+- [ ] Sebelum field kesehatan/kulit atau catatan kunjungan dibuat/diubah, consent sudah tercatat dan diverifikasi server-side.
 - [ ] Consent timestamp dan versi teks consent dicatat.
 - [ ] Teks persetujuan dapat ditelusuri berdasarkan versinya.
 - [ ] Permintaan akses/koreksi/penghapusan ditangani melalui prosedur yang terotorisasi.
