@@ -97,7 +97,7 @@ Pemisahan data bukan sekadar pemisahan tampilan. Data booking dan data rekam kul
 - Prosedur penghapusan atau anonimisasi data atas permintaan.
 
 **Fondasi dan operasi**
-- Satu repo privat, satu aplikasi Next.js App Router.
+- Satu repo privat, satu codebase Next.js dan satu image Docker yang dijalankan sebagai dua instance/service terpisah: web-public (APP_MODE=public) dan web-private (APP_MODE=private).
 - PostgreSQL dengan dua skema dan dua role.
 - Docker Compose untuk aplikasi dan database.
 - `scripts/verify.sh` untuk lint, test, dan pemindaian rahasia secara lokal.
@@ -688,7 +688,7 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 
 **Mitigasi:** tinjau teks, bukti, masa retensi, dan prosedur sebelum data nyata digunakan. Jangan mengklaim kepatuhan UU PDP.
 
-### K-06 — Satu aplikasi dan dua hostname perlu proteksi host yang ketat
+### K-06 — Satu codebase, dua instance, dan dua hostname perlu proteksi host yang ketat
 
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-01**. Satu codebase dan image Docker dijalankan sebagai dua instance; Tunnel mengarahkan masing-masing hostname ke service yang sesuai. Tiap instance 404 untuk route mode lain dan memakai host guard allowlist sebagai lapisan kedua.
 
