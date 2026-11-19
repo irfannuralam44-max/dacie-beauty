@@ -360,7 +360,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Dependensi:** T-010, T-011, T-012.
 - **Scope:** identitas visual Dacie Beauty clean/premium; form berisi nama, WhatsApp, treatment, tanggal, waktu; state loading/error/success; aksesibilitas dasar; responsif; tampilkan satu kalimat pemberitahuan privasi statis di bawah tombol kirim dengan tautan ke halaman privasi.
 - **Di luar scope:** form keluhan kulit, upload foto, akun pelanggan, pembayaran.
-- **Kemungkinan file:** `src/app/(booking)/*`, components booking, styles, UI tests.
+- **Kemungkinan file:** `src/app/(booking)/*`, halaman privasi statis (misalnya route privacy), components booking, styles, UI tests.
 - **Acceptance criteria:**
   - [ ] Form hanya meminta lima field yang disetujui.
   - [ ] Pemberitahuan privasi statis di bawah tombol kirim menyatakan nama dan nomor WhatsApp hanya dipakai untuk konfirmasi jadwal dan memiliki tautan ke halaman privasi.
