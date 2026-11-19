@@ -22,11 +22,17 @@ Wajib untuk setiap task yang menyentuh data pelanggan, booking, nomor WhatsApp, 
 - [ ] Nomor WhatsApp bukan faktor autentikasi.
 
 ### C. Akses dan pemisahan
+- [ ] `web-public` (`APP_MODE=public`) hanya menerima credential `app_public` dan secret CAPTCHA.
+- [ ] `web-public` menolak startup bila environment mengandung credential/secret privat.
+- [ ] `web-private` (`APP_MODE=private`) hanya menerima credential `app_private` dan secret sesi.
+- [ ] Kedua instance memakai image/codebase yang sama tetapi environment dan proses terpisah.
 - [ ] Jalur publik menggunakan role `app_public`.
 - [ ] Jalur privat menggunakan role `app_private`.
 - [ ] `app_public` tidak dapat membaca/menulis/mengakses skema `records`.
 - [ ] Fungsi publik hanya mengembalikan data minimum dan tidak menyertakan nama/kontak.
 - [ ] Route privat membutuhkan sesi aplikasi sah.
+- [ ] `web-public` 404 untuk route privat dan `web-private` 404 untuk route publik.
+- [ ] Host guard allowlist aktif sebagai lapisan kedua.
 - [ ] Route privat tidak dilayani melalui hostname booking.
 - [ ] Cloudflare Access bukan satu-satunya kontrol autentikasi.
 - [ ] Tepat dua akun internal aktif sesuai kebijakan pemilik.
@@ -37,6 +43,8 @@ Wajib untuk setiap task yang menyentuh data pelanggan, booking, nomor WhatsApp, 
 - [ ] Tanggal dan versi teks persetujuan dicatat.
 - [ ] Versi teks persetujuan dapat ditelusuri.
 - [ ] UI tidak mengklaim kepatuhan hukum secara otomatis.
+- [ ] Form booking menampilkan kalimat statis bahwa nama dan nomor hanya dipakai untuk konfirmasi jadwal, dengan tautan halaman privasi; bukan field/checkbox tambahan.
+- [ ] Teks final pemberitahuan disiapkan pemilik dan ditandai untuk tinjauan hukum.
 - [ ] Pemberitahuan privasi dan dasar pemrosesan telah ditinjau pihak yang kompeten.
 
 ### E. Penggunaan dan retensi
@@ -66,6 +74,8 @@ Wajib untuk setiap task yang menyentuh data pelanggan, booking, nomor WhatsApp, 
 - [ ] Pemrosesan data oleh pihak ketiga diidentifikasi.
 - [ ] Lokasi pemrosesan/transfer lintas negara ditandai untuk tinjauan.
 - [ ] Batas paket gratis dan kuota layanan diverifikasi dari sumber resmi sebelum diandalkan.
+- [ ] Versi Next.js stabil dan advisory keamanan resmi diperiksa saat bootstrap; URL sumber dan tanggal dicatat.
+- [ ] Audit dependency dijalankan dalam `scripts/verify.sh`; temuan high/critical menggagalkan verifikasi kecuali ada pengecualian tertulis.
 
 ## Penanganan permintaan hapus/anonimkan
 1. Verifikasi identitas dan ruang lingkup permintaan melalui prosedur internal.
