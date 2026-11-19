@@ -143,40 +143,49 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 
 - **Repo:** sama.
 - **Branch:** `agent/T-005-db-roles`
-- **Estimasi:** L
-- **Tujuan:** menerapkan isolasi akses database untuk koneksi publik dan privat.
+- **Estimasi:** XL
+- **Tujuan:** menerapkan kontrak privilege database D-02 dan D-03 secara persis.
 - **Dependensi:** T-004.
-- **Scope:** role `app_public` dan `app_private`; grant minimum; default privileges yang aman; function slot publik sesuai kontrak yang disepakati; tes positif dan negatif.
-- **Di luar scope:** UI booking atau UI rekam kulit.
-- **Kemungkinan file:** migrasi role/grant, SQL function, integration tests, dokumentasi privilege.
+- **Scope:** buat role runtime `app_public` dan `app_private`; role pemilik fungsi `booking_fn_owner` atau nama setara dengan atribut NOLOGIN dan hak minimum; tiga fungsi publik `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; fungsi privat `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)`; seluruh grant/revoke D-02/D-03; tabel `booking.status_events`; audit SECURITY DEFINER, search_path, object qualification, dan default privileges.
+- **Di luar scope:** UI booking, UI rekam kulit, dan logika UI pemilihan slot.
+- **Kemungkinan file:** migrasi role/grant, SQL functions, tabel status_events, integration tests, dokumentasi privilege.
 - **Acceptance criteria:**
-  - [ ] `app_public` tidak memiliki privilege pada schema `records`, termasuk privilege yang diwariskan.
-  - [ ] `app_private` memiliki akses yang diperlukan sesuai PRD.
-  - [ ] Public slot lookup tidak mengembalikan nama atau nomor kontak pelanggan.
-  - [ ] Akses konfigurasi treatment/jam kerja publik hanya melalui kontrak sempit yang disetujui, bukan grant tabel luas.
-  - [ ] Tes membuktikan query langsung dari `app_public` ke `records` ditolak.
-  - [ ] Role runtime bukan superuser dan bukan pemilik database.
-- **Tes:** integration test memakai koneksi autentikasi masing-masing role pada PostgreSQL; tes privilege negatif; verify.
+  - [ ] `app_public` hanya mendapat USAGE pada schema `booking` dan EXECUTE tiga fungsi D-02; tidak mendapat USAGE pada schema `records`.
+  - [ ] `app_public` tidak memiliki privilege tabel apa pun; SELECT dan INSERT langsung ke setiap tabel ditolak. UPDATE/DELETE juga tidak diberikan.
+  - [ ] `get_public_config` mengembalikan treatment aktif (id/nama/durasi/jeda), jam kerja provider aktif per hari tanpa nama provider, time_off, dan booking_rules.
+  - [ ] `get_blocked_intervals` hanya mengembalikan provider_id/starts_at/ends_at untuk pending/confirmed yang beririsan; rentang lebih dari 35 hari ditolak; tidak ada ID booking/nama/nomor/status.
+  - [ ] `create_booking` menormalisasi WA ulang, memvalidasi D-06, memilih provider D-04, menangani konkurensi, dan hanya mengembalikan kode hasil yang ditetapkan.
+  - [ ] Fungsi publik dan `set_booking_status` memakai SECURITY DEFINER, owner NOLOGIN khusus hak minimum (bukan superuser), search_path dikunci, objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya untuk role yang ditetapkan.
+  - [ ] `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada treatments, providers, working_hours, time_off, booking_rules; tanpa DML langsung pada bookings.
+  - [ ] `set_booking_status` hanya mengizinkan transisi D-03 dan menulis setiap transisi ke status_events; actor_user_id tidak memakai FK lintas schema.
+  - [ ] `app_private` memiliki DML yang diperlukan pada records tanpa DDL dan bukan pemilik objek.
+  - [ ] Role runtime bukan superuser; role pemilik fungsi bukan superuser dan NOLOGIN.
+- **Tes:** PostgreSQL integration tests menggunakan kredensial role sebenarnya; SELECT/INSERT langsung app_public ke seluruh tabel harus gagal; hanya tiga fungsi publik dapat dieksekusi; uji output function dan rentang 35 hari; uji status transition matrix dan audit event; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-005-db-roles.md`.
+
+
 
 ## T-006 — Lapisan data access dan transaksi
 
 - **Repo:** sama.
 - **Branch:** `agent/T-006-data-access`
 - **Estimasi:** M
-- **Tujuan:** menyediakan pola akses database konsisten yang menggunakan role sesuai konteks.
+- **Tujuan:** menyediakan pola akses database yang ditentukan oleh mode instance dan tidak memungkinkan credential silang.
 - **Dependensi:** T-003, T-005.
-- **Scope:** implementasikan satu pilihan data-access dari keputusan PRD; koneksi publik dan privat terpisah; parameterized query; transaksi; penanganan error tanpa membocorkan data.
-- **Di luar scope:** seluruh endpoint fitur.
-- **Kemungkinan file:** `src/lib/db/*`, modul repository, integration tests, dokumentasi.
+- **Scope:** satu pilihan data-access dari PRD; pemilihan pool saat startup berdasarkan APP_MODE; instance public hanya dapat membuat pool app_public dan instance private hanya app_private; public mode tidak dapat mengimpor/membuat pool privat; parameterized query; transaksi; error aman.
+- **Di luar scope:** endpoint fitur dan mekanisme untuk memilih role berdasarkan request.
+- **Kemungkinan file:** `src/lib/db/*`, modul repository, config per mode, integration tests, dokumentasi.
 - **Acceptance criteria:**
-  - [ ] Public code path hanya dapat meminta koneksi `app_public`.
-  - [ ] Private code path menggunakan `app_private` dan tidak tersedia bagi client.
-  - [ ] Query menggunakan parameter binding.
-  - [ ] Transaksi dapat di-rollback saat terjadi kegagalan.
-  - [ ] Secret koneksi hanya dibaca pada server.
-- **Tes:** unit test pemilihan koneksi; integration test query/rollback dan role; lint; verify.
+  - [ ] `APP_MODE=public` hanya membuat pool `app_public`.
+  - [ ] `APP_MODE=private` hanya membuat pool `app_private`.
+  - [ ] Test membuktikan instance public tidak dapat membuat atau mengakses pool privat, termasuk melalui import tidak sengaja.
+  - [ ] Tidak ada fallback atau helper yang memungkinkan request memilih role/pool.
+  - [ ] Query menggunakan parameter binding dan transaksi dapat di-rollback.
+  - [ ] Secret koneksi hanya dibaca server-side dan public mode menolak secret privat saat startup.
+- **Tes:** unit tests validasi APP_MODE dan pool selection; integration tests query/rollback/role; negative import/boundary tests; lint; verify.
 - **Laporan:** `docs/reports/T-006-data-access.md`.
+
+
 
 ## T-007 — Kerangka test dan script verify lokal
 
