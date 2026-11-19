@@ -318,7 +318,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menghitung slot yang tersedia berdasarkan aturan operasional.
 - **Dependensi:** T-009, T-010.
-- **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query blocked maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; interval terpakai adalah [mulai, mulai + durasi + jeda); tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
+- **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query interval terpakai maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; interval terpakai adalah [mulai, mulai + durasi + jeda); tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
 - **Di luar scope:** UI booking dan notifikasi.
 - **Kemungkinan file:** domain service slot, query/function DB, unit/integration tests.
 - **Acceptance criteria:**
@@ -326,7 +326,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Slot di luar jam kerja atau dalam jeda tidak ditawarkan.
   - [ ] Slot memperhitungkan durasi treatment, jeda, time_off, dan setiap provider aktif.
   - [ ] UI menawarkan slot bila minimal satu provider kosong; pelanggan tidak memilih provider.
-  - [ ] Query blocked tidak meminta rentang lebih dari 35 hari.
+  - [ ] Query interval terpakai tidak meminta rentang lebih dari 35 hari.
   - [ ] Timezone tidak bergantung pada timezone mesin klien.
   - [ ] Tidak ada data identitas booking lain yang dikembalikan.
 - **Tes:** unit tests boundary waktu, DST tidak relevan untuk Asia/Jakarta tetapi offset harus eksplisit; integration test dengan booking sintetis.
