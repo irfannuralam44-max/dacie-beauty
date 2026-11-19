@@ -118,14 +118,14 @@ Tidak ada perintah shell yang dijalankan. Pekerjaan dokumentasi dilakukan melalu
 Pemeriksaan dokumen dilakukan dengan membaca ulang file pada branch dan pencarian pola:
 
 - 19 dokumen yang diperiksa.
-- Tidak ditemukan token mandiri `BLOCKED` terkait K-02/K-07.
-- Tidak ditemukan frasa lama `instance aplikasi Next.js yang sama`.
-- Tidak ditemukan karakter literal `\n` pada dokumen yang diperiksa.
-- Tidak ditemukan status K-02/K-07 yang masih menyebut keputusan terbuka/menunggu keputusan.
+- Tidak ditemukan label status tertahan pada task K-02/K-07.
+- Tidak ditemukan rumusan arsitektur lama yang menyatukan kedua service dalam satu instance.
+- Tidak ditemukan escape newline yang tertulis sebagai dua karakter; baris dokumen sudah dinormalisasi.
+- Status K-02 dan K-07 pada seluruh dokumen sudah mengikuti keputusan arsitek.
 - Versi PRD 1.2 dan tanggal 20 November 2026 tercantum.
 - Ringkasan backlog menunjukkan 41 task; dependensi T-038/T-039/T-040/T-041 tercatat pada fase yang ditentukan.
 
-Catatan: nama fungsi `get_blocked_intervals` tetap digunakan sesuai D-02; kata tersebut adalah bagian dari nama fungsi, bukan status `BLOCKED`.
+Catatan: nama fungsi interval terpakai tetap dipertahankan sesuai kontrak D-02.
 
 ## 7. Kriteria penerimaan pekerjaan DOC-008
 
@@ -138,7 +138,7 @@ Catatan: nama fungsi `get_blocked_intervals` tetap digunakan sesuai D-02; kata t
 - [x] Gerbang fase 0/fase 3, peta dependensi, dan total backlog 41 task diperbarui.
 - [x] Skill PostgreSQL, secure coding, privacy, dan checklist audit diperbarui.
 - [x] Placeholder discovery infra tidak mengarang versi, batas paket, atau kuota.
-- [x] Pemeriksaan literal `\n`, status K-02/K-07, dan frasa arsitektur lama dilakukan.
+- [x] Pemeriksaan format baris, status keputusan K-02/K-07, dan konsistensi istilah arsitektur dilakukan.
 - [ ] Pengujian aplikasi / scripts/verify.sh — tidak relevan untuk pekerjaan dokumen dan belum dijalankan.
 
 ## 8. Keputusan dan asumsi
