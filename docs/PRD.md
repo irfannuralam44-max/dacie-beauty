@@ -245,7 +245,7 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
 - Skema `records` menyimpan data pelanggan dan rekam kulit.
 - Role `app_public` hanya boleh membuat booking dan menjalankan fungsi terbatas untuk mendapatkan informasi jam yang sudah terisi tanpa nama/kontak.
 - Role `app_public` tidak memiliki hak apa pun atas skema `records`.
-- Role `app_private` boleh membaca booking dan mengakses data `records` sesuai kebutuhan aplikasi privat.
+- Role `app_private` boleh membaca booking dan mengakses data `records` sesuai kebutuhan aplikasi privat. Kebutuhan mengubah status booking dari area privat belum diberi grant langsung; gunakan fungsi database sempit hanya setelah kontrak privilege disetujui pemilik (lihat Catatan keberatan K-07).
 - Koneksi database publik dan privat harus dibuat terpisah dan digunakan secara eksplisit pada server-side code.
 - Test lokal wajib membuktikan role publik ditolak ketika membaca tabel pada skema `records`.
 - Migrasi harus berupa file SQL yang tersimpan di repo atau alat migrasi ringan yang dipilih dan dijelaskan dalam PRD implementasi. Pilihan awal yang disarankan adalah **file SQL berversi** agar sederhana, transparan, mudah diaudit, dan tidak mengikat vendor.
@@ -652,8 +652,20 @@ Bagian ini menyampaikan risiko/ketegangan teknis tanpa mengubah keputusan yang t
 
 ---
 
+### K-07 — Aksi konfirmasi booking membutuhkan hak tulis yang belum didefinisikan
+
+**Keputusan terkunci:** role `app_private` digunakan untuk area privat, membaca booking, dan mengakses `records`. Area privat juga harus menyediakan aksi konfirmasi/perubahan status booking.
+
+**Konflik:** membaca booking tidak otomatis memberi hak untuk mengubah status. Memberi `UPDATE` langsung pada tabel `booking.bookings` kepada role `app_private` akan memperluas privilege dari keputusan awal.
+
+**Rekomendasi aman untuk diputuskan pemilik:** pertahankan pembacaan booking melalui `app_private`, lalu sediakan satu fungsi database terbatas untuk transisi status yang diizinkan (misalnya pending → confirmed/cancelled), dengan validasi transisi, audit, argumen minimum, owner terbatas, `search_path` aman, dan EXECUTE hanya untuk `app_private`. Jangan memberi UPDATE tabel secara luas. Ini tetap memerlukan persetujuan eksplisit pemilik sebelum implementasi.
+
+**Gerbang:** task implementasi tombol konfirmasi booking tidak boleh memberikan privilege tulis langsung atau mengarang kontrak fungsi sebelum keputusan ini disetujui.
+
+---
+
 ## 18. Riwayat perubahan
 
 | Versi | Tanggal | Perubahan |
 |---|---|---|
-| 1.0 | 19 November 2026 | PRD awal berdasarkan spesifikasi dan keputusan arsitektur pemilik |
+| 1.0 | 19 November 2026 | PRD awal berdasarkan spesifikasi dan keputusan arsitektur pemilik |\n| 1.1 | 19 November 2026 | Review kesesuaian: mencatat kontrak privilege konfirmasi booking sebagai keputusan terbuka |
