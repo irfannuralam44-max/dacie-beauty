@@ -146,6 +146,8 @@ Setelah sinkronisasi, catat branch dasar dan commit awal di laporan.
 - Cookie sesi wajib `Secure`, `HttpOnly`, dan `SameSite` yang sesuai.
 - Terapkan batas percobaan login dan rate limit booking.
 - Rute privat harus menolak request tanpa sesi sah.
+- Setiap fungsi repository privat wajib memeriksa sesi/otorisasi pada lapisan akses data (misalnya `requireSession()`) sebelum query; middleware/proxy bukan satu-satunya kontrol.
+- Setiap instance 404 untuk route mode lain; host guard allowlist eksplisit menjadi lapisan kedua.
 - Validasi hostname menggunakan allowlist yang eksplisit.
 - Rute privat harus ditolak dari hostname booking.
 - Error publik tidak boleh membocorkan stack trace, SQL, konfigurasi, atau data pribadi.
@@ -216,7 +218,7 @@ Repository harus menyediakan:
 scripts/verify.sh
 ```
 
-Script ini menjadi entry point lokal untuk lint, test, pemeriksaan tipe/build yang ditetapkan, integration test dengan PostgreSQL Docker, dan secret scanning (misalnya Gitleaks). Script harus mengembalikan exit code non-zero jika tahap wajib gagal.
+Script ini menjadi entry point lokal untuk lint, test, pemeriksaan tipe/build yang ditetapkan, integration test dengan PostgreSQL Docker, secret scanning (misalnya Gitleaks), dan audit dependency. Script harus mengembalikan exit code non-zero jika tahap wajib gagal. Temuan dependency high atau critical menggagalkan verifikasi kecuali ada pengecualian tertulis yang disetujui dan dicatat di laporan task.
 
 Jangan menganggap perintah internal sudah tersedia sebelum memeriksa `package.json`, file konfigurasi, dan dokumentasi repository. Jangan mengarang nama script.
 
