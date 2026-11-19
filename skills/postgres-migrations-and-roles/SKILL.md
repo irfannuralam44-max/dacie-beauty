@@ -10,8 +10,8 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 
 - Skema `booking`: data booking operasional.
 - Skema `records`: data kulit/kesehatan dan akun internal.
-- `app_public`: hak minimum untuk membuat booking dan menjalankan fungsi slot yang disetujui; tidak memiliki akses apa pun ke `records`.
-- `app_private`: akses area privat, termasuk records dan pembacaan booking sesuai kebutuhan.
+- `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`.
+- `app_private`: SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; tanpa DML langsung pada `bookings`; status hanya melalui `set_booking_status`; DML yang diperlukan pada `records` tanpa DDL.
 - Jangan memakai superuser sebagai runtime role.
 - Jangan memberi hak ke `PUBLIC` tanpa alasan yang eksplisit dan ditinjau.
 - Jangan mengurangi entitas model data yang ditetapkan PRD.
@@ -38,18 +38,22 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 
 ## Pencegahan tabrakan booking
 
-Untuk booking, constraint database harus mencegah dua booking yang saling tumpang tindih untuk provider yang sama. Pilih mekanisme setelah memeriksa dukungan versi PostgreSQL yang dipakai dan kebutuhan extension. Jangan menganggap pemeriksaan availability di aplikasi cukup.
+Untuk booking, constraint database harus mencegah dua booking yang saling tumpang tindih untuk provider yang sama. Pilih mekanisme setelah memeriksa dukungan versi PostgreSQL yang dipakai dan kebutuhan extension. Ketersediaan `btree_gist` serta hak membuat extension perlu diverifikasi pada discovery; jangan menganggap extension tersedia. Jangan menganggap pemeriksaan availability di aplikasi cukup.
 
 Uji dengan dua transaksi/request bersamaan. Hasil yang benar: paling banyak satu booking aktif yang saling bertabrakan berhasil.
 
 ## Penggunaan role
 
-- Pool publik hanya dibuat dari credential `app_public`.
-- Pool privat hanya dibuat dari credential `app_private`.
+- Pool publik hanya dibuat oleh instance `APP_MODE=public` dari credential `app_public`; pool privat hanya dibuat oleh `APP_MODE=private` dari credential `app_private`.
+- Instance publik tidak boleh memiliki credential/secret privat dan wajib gagal startup bila menemukan variabel tersebut.
 - Jangan membuat helper generik yang memungkinkan request memilih nama role atau pool.
 - Jangan mengimpor koneksi privat dari modul yang dapat dipanggil route publik.
-- Jangan memberikan akses SELECT tabel konfigurasi kepada role publik tanpa keputusan eksplisit. Jika halaman publik memerlukan data treatment/jam kerja, eskalasi kontrak fungsi pembacaan konfigurasi non-sensitif sesuai Catatan keberatan PRD K-02; task implementasi tetap BLOCKED sampai pemilik menyetujui.
-- Jangan memberi `app_private` UPDATE langsung pada tabel booking untuk konfirmasi status. Eskalasi sesuai PRD K-07; jika disetujui, implementasikan fungsi transisi status terbatas dan uji transisi yang diizinkan.
+- `app_public` tidak memiliki privilege tabel; ia hanya boleh menjalankan tiga fungsi publik D-02.
+- Fungsi D-02 dan `booking.set_booking_status` memakai SECURITY DEFINER, owner NOLOGIN khusus berhak minimum, bukan superuser; search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; GRANT EXECUTE hanya ke role yang ditetapkan.
+- `app_private` memiliki SELECT semua tabel booking dan INSERT/UPDATE tanpa DELETE pada tabel konfigurasi yang ditetapkan D-03. Ia tidak memiliki DML langsung pada `booking.bookings`.
+- Perubahan status booking hanya melalui `booking.set_booking_status`; transisi divalidasi dan ditulis ke `booking.status_events`.
+- `app_private` memiliki DML yang diperlukan pada `records`, tanpa DDL dan bukan pemilik objek.
+- Uji SELECT dan INSERT langsung dari `app_public` terhadap semua tabel harus gagal. Uji juga hanya tiga fungsi publik yang dapat dieksekusi.
 
 ## Contoh pemeriksaan privilege
 
