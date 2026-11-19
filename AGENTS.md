@@ -118,7 +118,7 @@ Setelah sinkronisasi, catat branch dasar dan commit awal di laporan.
 - Gunakan query berparameter dan transaksi untuk operasi yang memerlukan konsistensi.
 - Periksa hak akses default untuk tabel, sequence, dan function baru pada setiap migrasi.
 - Test lokal harus membuktikan akses `app_public` ke `records` ditolak oleh PostgreSQL sungguhan.
-- Fungsi yang dieksekusi role publik harus mengembalikan data minimum dan tidak mengungkap nama/kontak. Jika memakai `SECURITY DEFINER`, audit owner, privilege execute, argumen, dan `search_path`.
+- Fungsi yang dieksekusi role publik harus mengembalikan data minimum dan tidak mengungkap nama/kontak. Jika memakai `SECURITY DEFINER`, audit owner, privilege execute, argumen, dan `search_path`.\n- Jangan memperluas `app_public` untuk membaca daftar treatment/jam kerja sebelum kontrak fungsi konfigurasi publik diputuskan secara eksplisit oleh pemilik; jangan memberi SELECT tabel konfigurasi secara langsung.\n- `app_private` hanya membaca booking sesuai kontrak saat ini. Jangan memberi UPDATE langsung pada tabel booking untuk tombol konfirmasi; tunggu keputusan K-07 dan gunakan fungsi transisi status terbatas jika disetujui.
 
 ### 5.3 Web dan autentikasi
 
