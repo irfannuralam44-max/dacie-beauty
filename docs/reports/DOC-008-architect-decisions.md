@@ -65,7 +65,7 @@ Dokumen yang tidak perlu diubah berdasarkan keputusan ini—`CLAUDE.md`, kedua t
 ### D-05 — Status dan slot yang memblokir
 
 - `docs/PRD.md`: bagian 7.2 dan 8.1.
-- `docs/IMPLEMENTATION-TASKS.md`: T-009, T-011, T-012.
+- `docs/IMPLEMENTATION-TASKS.md`: T-004 (schema dan constraint), T-009, T-011, T-012 (constraint overlap database dan concurrency).
 - `docs/audit/SECURITY-PRIVACY-CHECKLIST.md`: status pending/confirmed, interval terpakai, dan batas rentang fungsi interval.
 
 ### D-06 — Booking rules bawaan
@@ -160,8 +160,9 @@ Catatan: nama fungsi interval terpakai tetap dipertahankan sesuai kontrak D-02.
 ## 10. Git dan langkah untuk pemilik
 
 - **Branch:** `docs/DOC-008-architect-decisions`
-- **Commit sebelum laporan:** `8f4dac064217ddd3224dee6237c0ad9648bcb744`
-- **Commit laporan:** akan menjadi commit terpisah yang menambahkan file laporan ini; SHA branch terbaru disampaikan pada pesan chat akhir.
+- **Commit milestone dokumen sebelum laporan awal:** `8f4dac064217ddd3224dee6237c0ad9648bcb744`.
+- **Follow-up setelah laporan awal:** `bdc69d97a9bf86fd995111f73977f0d1fb7031a0` memperjelas constraint overlap database pada T-012.
+- **Commit laporan dan revisi laporan:** disimpan sebagai commit terpisah; SHA branch terbaru disampaikan pada pesan chat akhir.
 - **Push:** perubahan dokumen telah ditulis ke branch remote; belum ada Pull Request dan belum ada merge.
 
 **Langkah wajib untuk pemilik:**
