@@ -313,19 +313,28 @@ Model berikut adalah baseline minimum. Boleh ditambah kolom/tabel/constraint yan
 
 | Entitas | Data inti | Catatan |
 |---|---|---|
-| `treatments` | ID, nama, status aktif, durasi, jeda | Data pilihan treatment dan aturan waktu |
-| `providers` | ID, nama tampilan/internal, status aktif | Dua penyedia layanan |
-| `working_hours` | ID, provider, hari, jam mulai, jam selesai | Zona waktu operasional ditangani konsisten |
-| `bookings` | ID, nama, nomor WA ternormalisasi, treatment_id, provider_id, mulai, selesai, status, created_at | Tidak menyimpan keluhan/kondisi kulit |
-| Pengecualian jadwal (jika diperlukan) | Provider, rentang waktu, alasan operasional non-sensitif | Dapat ditambahkan untuk libur/cuti |
+| `treatments` | ID, nama, is_active, durasi_menit, jeda_menit | Data pilihan treatment dan aturan waktu |
+| `providers` | ID, nama internal, is_active, priority | Provider dipilih otomatis menurut priority |
+| `working_hours` | ID, provider_id, hari, mulai, selesai | Jam kerja per provider dan hari |
+| `time_off` | ID, provider_id, starts_at, ends_at, keterangan non-sensitif, is_active | Hari libur/cuti/pengecualian jadwal per provider |
+| `booking_rules` | Satu baris: slot_step_minutes, min_notice_hours, max_advance_days, max_active_per_wa | Nilai awal 30 menit, 3 jam, 30 hari, 2 booking aktif/WA |
+| `bookings` | ID, nama, nomor WA ternormalisasi, treatment_id, provider_id, starts_at, ends_at, status, created_at | Tidak menyimpan keluhan/kondisi kulit |
+| `status_events` | ID, booking_id, from_status, to_status, actor_user_id, created_at | Audit transisi; actor_user_id tanpa FK lintas schema |
 
 **Aturan booking**
-- Waktu disimpan dalam representasi yang konsisten, idealnya `timestamptz`, dan ditampilkan dalam `Asia/Jakarta`.
-- Rentang booking diperlakukan sebagai interval dengan batas yang tidak menimbulkan tabrakan pada sesi berurutan.
-- Constraint anti-tabrakan harus mempertimbangkan provider dan rentang waktu, termasuk transaksi bersamaan. Pilihan implementasi constraint (misalnya exclusion constraint dengan dukungan extension yang sesuai, atau mekanisme database lain yang setara) harus diverifikasi pada discovery PostgreSQL.
-- Status yang tidak lagi memblokir slot harus didefinisikan secara eksplisit. Status awal yang disarankan: `pending`, `confirmed`, `cancelled`, `completed`, `no_show`. Status final ditetapkan dalam task booking.
-- Fungsi slot publik hanya mengembalikan waktu yang sudah terisi/blocked untuk rentang tanggal yang diminta; tidak boleh mengembalikan nama, nomor WhatsApp, status yang mengandung informasi pribadi, atau ID pelanggan.
-- Fungsi yang dapat dipanggil publik harus memiliki hak eksekusi terbatas, validasi argumen, dan konfigurasi `search_path` yang aman bila menggunakan `SECURITY DEFINER`.
+- Status: `pending`, `confirmed`, `cancelled`, `completed`, `no_show`. Hanya pending dan confirmed memblokir slot.
+- Provider dipilih otomatis oleh `create_booking` dari provider aktif yang kosong, menurut `providers.priority`; pelanggan tidak memilih provider.
+- Interval terpakai adalah `[mulai, mulai + durasi + jeda)`.
+- Slot ditawarkan UI bila minimal satu provider aktif kosong; fungsi database memilih provider saat booking dibuat.
+- Nilai awal `booking_rules`: langkah slot 30 menit, waktu pesan minimal 3 jam sebelumnya, maksimal 30 hari ke depan, maksimal dua booking aktif (pending/confirmed dan belum lewat) per nomor WA.
+- Pelanggan tidak membatalkan sendiri; pembatalan dilakukan melalui WhatsApp kepada pemilik.
+- Pending tidak kedaluwarsa otomatis; dashboard privat menyorot pending lebih dari 24 jam.
+- Constraint database (misalnya exclusion constraint atas provider dan rentang) menjadi pencegahan tabrakan terakhir. Dukungan `btree_gist` dan hak membuat extension perlu diverifikasi pada discovery; jangan menganggap extension tersedia.
+- `get_blocked_intervals` hanya mengembalikan provider_id dan interval untuk status pending/confirmed dalam rentang maksimal 35 hari.
+- Fungsi publik tidak mengembalikan nama, kontak, ID booking, atau status.
+- Detail sintaks, locking/concurrency, dan privilege fungsi diverifikasi pada task database.
+
+
 
 ### 8.2 Skema `records`
 
@@ -361,23 +370,31 @@ Keamanan berikut adalah kriteria penerimaan, bukan pekerjaan opsional.
 
 ### 9.1 Pemisahan host dan route
 
-- Host publik: `booking.<domain>`.
-- Host privat: `rekam.<domain>`.
+- Satu codebase Next.js dan satu image Docker dijalankan sebagai dua instance/service terpisah: `web-public` dengan `APP_MODE=public` dan `web-private` dengan `APP_MODE=private`.
+- `web-public` hanya melayani `booking.<domain>`, hanya menerima kredensial `app_public` dan secret CAPTCHA, serta wajib menolak startup bila environment mengandung kredensial atau secret privat.
+- `web-private` hanya melayani `rekam.<domain>`, hanya menerima kredensial `app_private` dan secret sesi.
+- Setiap instance mengembalikan HTTP 404 untuk route mode lain pada lapisan routing. Host guard allowlist eksplisit tetap menjadi lapisan kedua.
+- Cloudflare Tunnel memetakan `booking.<domain>` ke service `web-public` dan `rekam.<domain>` ke service `web-private`.
+- Host publik: `booking.<domain>`; host privat: `rekam.<domain>`.
 - Host privat dilindungi Cloudflare Access dengan allowlist hanya dua email yang ditentukan pemilik, dan tetap memerlukan login aplikasi.
-- Rute privat tidak boleh dilayani dari hostname booking, termasuk melalui rewrite, route handler, API, server action, middleware bypass, atau variasi URL.
-- Hostname privat harus menolak host yang tidak dikenal.
-- Pemeriksaan host harus menggunakan allowlist hostname yang dikonfigurasi, bukan pencocokan substring.
+- Hostname yang tidak dikenal ditolak menggunakan allowlist eksplisit, bukan pencocokan substring.
 - Konfigurasi Cloudflare Access, batas paket gratis, dan kemampuan kebijakan yang diperlukan wajib diverifikasi sebelum deployment. Jangan menganggap fitur atau kuota tertentu tersedia tanpa bukti terkini.
+
+
 
 ### 9.2 Database least privilege
 
 - Role database bukan superuser dan tidak memiliki hak administratif.
-- `app_public` hanya memiliki hak minimum untuk membuat booking dan mengeksekusi fungsi slot publik yang diizinkan.
-- `app_public` tidak boleh `SELECT`, `INSERT`, `UPDATE`, `DELETE`, atau `USAGE` yang memberi jalur akses ke `records`.
-- `app_private` digunakan hanya untuk rute privat.
-- Hak default untuk tabel/sequence/fungsi baru harus ditinjau agar migrasi tidak tanpa sengaja memberi hak kepada `PUBLIC` atau role publik.
-- Koneksi role publik dan privat tidak boleh tertukar.
-- Test integrasi harus menjalankan query nyata dengan role `app_public` dan membuktikan akses ke `records` ditolak oleh PostgreSQL.
+- `app_public` tidak memiliki privilege tabel apa pun; hanya `USAGE` pada schema `booking`, `EXECUTE` pada tiga fungsi publik D-02, dan tidak memiliki `USAGE` pada schema `records`.
+- `app_public` tidak dapat SELECT, INSERT, UPDATE, atau DELETE langsung pada tabel mana pun.
+- `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE hanya pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa DML langsung pada `bookings`; perubahan status hanya melalui `booking.set_booking_status`.
+- `app_private` memiliki hak DML yang diperlukan pada `records`, tanpa hak DDL dan bukan pemilik objek.
+- Semua fungsi `SECURITY DEFINER` dimiliki role khusus `NOLOGIN` dengan hak minimum, bukan superuser; `search_path` dikunci; objek dikualifikasi schema; hak EXECUTE dari `PUBLIC` dicabut dan hanya diberikan kepada role aplikasi yang ditentukan.
+- Hak default untuk tabel/sequence/fungsi baru ditinjau agar migrasi tidak tanpa sengaja memberi hak kepada `PUBLIC` atau role publik.
+- Test integrasi membuktikan `app_public` tidak dapat SELECT atau INSERT langsung ke tabel apa pun, tidak dapat mengakses schema `records`, dan hanya dapat menjalankan fungsi yang diberikan.
+- Detail sintaks PostgreSQL, exclusion constraint, extension `btree_gist`, dan hak membuat extension perlu diverifikasi pada discovery/task database.
+
+
 
 ### 9.3 Aplikasi web
 
@@ -454,7 +471,7 @@ Hal yang perlu ditinjau oleh penasihat hukum/ahli privasi:
 ### 11.1 Komponen
 
 1. Satu repositori privat `dacie-beauty`.
-2. Satu aplikasi Next.js App Router.
+2. Satu codebase Next.js App Router dan satu image Docker, dijalankan sebagai dua instance/service: `web-public` (`APP_MODE=public`) dan `web-private` (`APP_MODE=private`).
 3. Satu PostgreSQL dengan skema `booking` dan `records`.
 4. Role `app_public` dan `app_private`.
 5. Docker Compose untuk aplikasi dan database.
@@ -464,15 +481,18 @@ Hal yang perlu ditinjau oleh penasihat hukum/ahli privasi:
 
 ### 11.2 Host routing
 
-- Host booking hanya menyajikan halaman dan endpoint booking publik.
-- Host rekam hanya menyajikan area privat setelah pemeriksaan Access dan sesi aplikasi.
-- Request ke host yang tidak terdaftar ditolak.
-- Request ke route privat melalui host booking harus ditolak secara eksplisit.
-- Server-side data access harus memilih koneksi berdasarkan area/route yang diizinkan, bukan berdasarkan parameter request yang dapat dimanipulasi.
+- Cloudflare Tunnel memetakan `booking.<domain>` ke `web-public` (`APP_MODE=public`).
+- Cloudflare Tunnel memetakan `rekam.<domain>` ke `web-private` (`APP_MODE=private`).
+- Kedua service dibangun dari codebase dan image Docker yang sama, tetapi dijalankan sebagai dua instance dengan environment/secret terpisah.
+- Tiap instance mengembalikan 404 untuk route mode lain; host guard allowlist merupakan lapisan kedua.
+- Server-side data access memilih koneksi berdasarkan mode instance, bukan parameter request.
 
 ### 11.3 Docker Compose
 
-- Service aplikasi dan PostgreSQL berjalan dalam jaringan internal Docker.
+- Service `web-public`, `web-private`, dan PostgreSQL berjalan dalam jaringan internal Docker.
+- `web-public` hanya menerima `APP_MODE=public`, kredensial `app_public`, dan secret CAPTCHA; startup gagal bila environment berisi kredensial atau secret privat.
+- `web-private` hanya menerima `APP_MODE=private`, kredensial `app_private`, dan secret sesi.
+- Kedua service aplikasi menggunakan image yang sama dengan konfigurasi environment berbeda.
 - Database hanya diekspos ke jaringan yang diperlukan; tidak dipublikasikan ke internet.
 - Service menggunakan `restart: unless-stopped`.
 - Volume persisten digunakan untuk data PostgreSQL.
