@@ -22,6 +22,8 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 - [ ] Tidak ada dependency/engine hasil copy tanpa pemeriksaan lisensi dan pencatatan sumber.
 - [ ] Lockfile konsisten dengan package manager yang dipilih.
 - [ ] Tidak ada workflow CI remote yang ditambahkan bertentangan dengan keputusan proyek.
+- [ ] Versi Next.js stabil dan advisory resmi diperiksa saat bootstrap; URL dan tanggal dicatat.
+- [ ] Audit dependency berjalan melalui `scripts/verify.sh`; high/critical menggagalkan kecuali ada pengecualian tertulis.
 
 ## 3. Identitas, autentikasi, dan sesi privat
 
@@ -41,6 +43,7 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 ## 4. Otorisasi dan pemisahan hostname
 
 - [ ] Semua halaman/API rekam kulit memeriksa sesi di server.
+- [ ] Setiap fungsi repository privat memanggil `requireSession()`/otorisasi di lapisan data sebelum query; middleware/proxy bukan satu-satunya kontrol.
 - [ ] Public hostname tidak menyajikan route privat.
 - [ ] Host header dan forwarded headers divalidasi; tidak dipercaya secara membabi buta.
 - [ ] Tidak ada akses privat hanya dilindungi oleh tombol/menu tersembunyi.
@@ -52,9 +55,18 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 ## 5. Database dan least privilege
 
 - [ ] Schema `booking` dan `records` terpisah.
+- [ ] `web-public` dan `web-private` adalah dua instance dari satu codebase/image dengan `APP_MODE` yang berbeda.
+- [ ] `web-public` hanya menerima `app_public` dan secret CAPTCHA; startup gagal jika ada credential/secret privat.
+- [ ] `web-private` hanya menerima `app_private` dan secret sesi.
+- [ ] Tiap instance 404 untuk route mode lain; host guard allowlist menjadi lapisan kedua.
 - [ ] Public code path hanya memakai `app_public`.
 - [ ] Private code path hanya memakai `app_private`.
+- [ ] `app_public` tidak memiliki privilege tabel apa pun; hanya USAGE pada schema booking dan EXECUTE tiga fungsi D-02.
 - [ ] `app_public` tidak punya USAGE/SELECT/INSERT/UPDATE/DELETE atau privilege lain pada `records`.
+- [ ] `app_public` gagal saat SELECT/INSERT langsung ke tabel apa pun.
+- [ ] Fungsi SECURITY DEFINER dimiliki role NOLOGIN berhak minimum, search_path dikunci, objek dikualifikasi schema, REVOKE PUBLIC, EXECUTE terbatas.
+- [ ] `app_private` memiliki SELECT seluruh booking, INSERT/UPDATE tanpa DELETE pada tabel konfigurasi D-03, tanpa DML langsung pada bookings; status melalui fungsi set_booking_status.
+- [ ] Transisi status dicatat pada booking.status_events sesuai aturan D-03.
 - [ ] Tidak ada privilege berlebih yang diwariskan melalui role membership/default privileges.
 - [ ] Runtime role bukan superuser, bukan pemilik database, dan bukan role migrasi.
 - [ ] Public slot lookup hanya mengembalikan slot yang tersedia, tanpa nama/kontak pelanggan.
@@ -81,6 +93,7 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 
 - [ ] Form booking publik hanya meminta lima field yang disepakati: nama, WhatsApp, treatment, tanggal, waktu.
 - [ ] Form booking tidak meminta keluhan kulit, alergi, atau data kesehatan.
+- [ ] Pemberitahuan privasi statis tampil di bawah tombol kirim dengan tautan halaman privasi; form tetap lima field dan tidak menambah checkbox.
 - [ ] Data rekam kulit hanya tersedia di area privat.
 - [ ] Data yang dikumpulkan sesuai tujuan dan scope PRD.
 - [ ] Profil identitas dasar (nama/WA) boleh dibuat sebelum consent bila diperlukan untuk alur booking.
@@ -108,7 +121,11 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 ## 9. Booking dan alur operasional
 
 - [ ] Slot dihitung server-side dalam timezone Asia/Jakarta.
-- [ ] Jam kerja, durasi treatment, jeda, dan provider diperhitungkan.
+- [ ] Jam kerja, durasi treatment, jeda, time_off, dan provider diperhitungkan.
+- [ ] Provider dipilih otomatis menurut priority; pelanggan tidak memilih provider.
+- [ ] Hanya pending/confirmed memblokir slot; interval terpakai [mulai, mulai + durasi + jeda).
+- [ ] Booking rules: langkah 30 menit, minimal 3 jam, maksimal 30 hari, maksimal 2 booking aktif per WA.
+- [ ] Rentang get_blocked_intervals maksimum 35 hari dan output hanya provider_id serta interval.
 - [ ] Booking baru tidak otomatis dinyatakan confirmed.
 - [ ] Constraint/transaksi mencegah double booking.
 - [ ] Public response tidak membocorkan identitas booking lain.
