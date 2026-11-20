@@ -149,7 +149,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** membuat role database dan menerapkan privilege minimum D-02/D-03.
 - **Dependensi:** T-004.
-- **Scope:** role runtime `app_public` dan `app_private`; role pemilik fungsi `booking_fn_owner` atau nama setara dengan atribut NOLOGIN dan hak minimum; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
+- **Scope:** role runtime `app_public` dan `app_private`; dua role pemilik fungsi terpisah: `booking_public_fn_owner` dan `booking_private_fn_owner`, keduanya NOLOGIN dan bukan superuser; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
 - **Di luar scope:** UI booking, UI rekam kulit, dan logika pemilihan slot.
 - **Kemungkinan file:** migrasi role/grant, integration tests, dokumentasi privilege.
 - **Acceptance criteria:**
@@ -157,7 +157,10 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] `app_public` tidak memiliki privilege tabel apa pun; SELECT dan INSERT langsung ke setiap tabel ditolak. UPDATE/DELETE juga tidak diberikan.
   - [ ] `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa DML langsung pada `booking.bookings`.
   - [ ] `app_private` memiliki DML yang diperlukan pada `records`, tanpa DDL dan bukan pemilik objek.
-  - [ ] Role runtime bukan superuser; role pemilik fungsi bukan superuser dan NOLOGIN.
+  - [ ] `booking_public_fn_owner` dan `booking_private_fn_owner` dibuat terpisah, keduanya NOLOGIN dan bukan superuser.
+  - [ ] `booking_public_fn_owner` hanya memiliki USAGE pada schema `booking`; SELECT pada `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; SELECT dan INSERT pada `bookings`; tidak memiliki UPDATE/DELETE atau privilege pada `records`.
+  - [ ] `booking_private_fn_owner` hanya memiliki USAGE pada schema `booking`; SELECT dan UPDATE kolom `status` pada `bookings`; INSERT pada `status_events`; tidak memiliki hak tabel/kolom lain atau privilege pada `records`.
+  - [ ] Tes privilege membuktikan masing-masing owner tidak memiliki hak di luar daftar, tidak dapat mengubah kolom non-status pada `bookings`, dan keduanya bukan superuser.
   - [ ] Default privileges untuk tabel, sequence, dan fungsi baru ditetapkan/ditinjau agar tidak memberi hak berlebih.
   - [ ] Tes memakai koneksi kredensial role nyata: SELECT dan INSERT langsung dari `app_public` ke setiap tabel ditolak; `app_public` tidak memiliki USAGE pada `records`; DML langsung `app_private` pada `booking.bookings` ditolak.
 - **Tes:** PostgreSQL integration tests memakai koneksi sebagai `app_public` dan `app_private`; periksa seluruh tabel pada kedua schema; verifikasi default privileges; `scripts/verify.sh`.
@@ -170,14 +173,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menyediakan satu-satunya implementasi SQL untuk tiga fungsi publik D-02.
 - **Dependensi:** T-004, T-005.
-- **Scope:** implementasi `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; seluruh acceptance criteria D-02 yang sebelumnya tercampur di T-005; SECURITY DEFINER, owner NOLOGIN, hak minimum, search_path terkunci, objek schema-qualified, REVOKE ALL FROM PUBLIC, GRANT EXECUTE hanya kepada `app_public`, validasi argumen dan output; validasi D-06, normalisasi WA, provider auto-assign D-04, dan atomicity sesuai keputusan arsitektur.
+- **Scope:** implementasi `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; seluruh acceptance criteria D-02 yang sebelumnya tercampur di T-005; SECURITY DEFINER, ownership ke `booking_public_fn_owner` yang dibuat T-005, search_path terkunci, objek schema-qualified, REVOKE ALL FROM PUBLIC, GRANT EXECUTE hanya kepada `app_public`, validasi argumen dan output. Tidak membuat grant tabel baru; privilege tabel owner seluruhnya disiapkan T-005. validasi D-06, normalisasi WA, provider auto-assign D-04, dan atomicity sesuai keputusan arsitektur.
 - **Di luar scope:** repository/route handler Next.js, UI, serta fungsi `booking.set_booking_status`.
 - **Kemungkinan file:** SQL migrations untuk fungsi, integration tests PostgreSQL, dokumentasi kontrak output.
 - **Acceptance criteria:**
   - [ ] `get_public_config()` hanya mengembalikan treatment aktif (id/nama/durasi/jeda), jam kerja provider aktif per hari tanpa nama provider, `time_off`, dan `booking_rules`.
   - [ ] `get_blocked_intervals(p_from,p_to)` hanya mengembalikan `provider_id/starts_at/ends_at` untuk booking pending/confirmed yang beririsan; rentang lebih dari 35 hari ditolak; tidak ada ID booking/nama/nomor/status.
   - [ ] `create_booking(...)` memvalidasi D-06, menormalisasi WhatsApp, memilih provider menurut D-04, menulis secara atomik, dan hanya mengembalikan `created`, `slot_taken`, `invalid`, atau `limit_reached`.
-  - [ ] Ketiga fungsi memakai SECURITY DEFINER dengan owner NOLOGIN khusus berhak minimum (bukan superuser), search_path terkunci, objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya untuk `app_public`.
+  - [ ] Ketiga fungsi memakai SECURITY DEFINER dengan owner `booking_public_fn_owner` (NOLOGIN, bukan superuser), search_path terkunci, objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya untuk `app_public`.
+  - [ ] Task ini hanya menetapkan ownership fungsi; tidak membuat grant tabel/kolom kepada owner.
   - [ ] Fungsi tidak mengandalkan SELECT/INSERT/UPDATE/DELETE langsung dari role `app_public`.
 - **Tes:** integration tests output minimum, batas rentang 35 hari, validasi D-06, provider auto-assign, atomicity dan privilege EXECUTE; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-042-public-booking-functions.md`.
@@ -189,11 +193,12 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyediakan transisi status booking yang terkontrol dan tercatat.
 - **Dependensi:** T-005.
-- **Scope:** implementasi SQL `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)`; tabel `booking.status_events` bila belum dibuat di T-004; matriks transisi D-03; SECURITY DEFINER dan grant EXECUTE hanya kepada `app_private`.
+- **Scope:** implementasi SQL `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)`; tabel `booking.status_events` bila belum dibuat di T-004; matriks transisi D-03; SECURITY DEFINER, ownership ke `booking_private_fn_owner` yang dibuat T-005, dan grant EXECUTE hanya kepada `app_private`; tidak membuat grant tabel baru.
 - **Di luar scope:** perubahan status melalui DML langsung pada tabel `booking.bookings` dan UI privat.
 - **Kemungkinan file:** SQL migration fungsi/status_events, integration tests, dokumentasi matriks transisi.
 - **Acceptance criteria:**
-  - [ ] Fungsi menggunakan owner NOLOGIN khusus hak minimum, bukan superuser; search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; EXECUTE hanya untuk `app_private`.
+  - [ ] Fungsi menggunakan owner `booking_private_fn_owner` (NOLOGIN, bukan superuser); search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; EXECUTE hanya untuk `app_private`.
+  - [ ] Task ini hanya menetapkan ownership fungsi; tidak membuat grant tabel/kolom kepada owner.
   - [ ] Transisi pending → confirmed/cancelled dan confirmed → cancelled/completed/no_show diterima.
   - [ ] completed/no_show hanya dapat ditetapkan jika `starts_at` sudah lewat.
   - [ ] Setiap transisi dicatat ke `booking.status_events` dengan booking_id, status asal/tujuan, actor_user_id, dan timestamp; actor_user_id tidak memakai FK lintas schema.
