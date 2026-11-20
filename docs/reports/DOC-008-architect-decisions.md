@@ -174,3 +174,8 @@ Catatan: nama fungsi interval terpakai tetap dipertahankan sesuai kontrak D-02.
 ---
 
 **Status pekerjaan DOC-008:** dokumen diperbarui dan dicatat; implementasi aplikasi belum dimulai.
+
+
+## Addendum DOC-010 — Klarifikasi owner fungsi D-11
+
+Rujukan historis dalam laporan ini pada satu role owner fungsi NOLOGIN telah disupersesi oleh keputusan arsitek D-11 pada DOC-010. Model aktif menggunakan dua role terpisah: `booking_public_fn_owner` untuk tiga fungsi publik D-02 (SELECT tabel konfigurasi dan SELECT/INSERT bookings, tanpa UPDATE/DELETE), serta `booking_private_fn_owner` untuk fungsi status D-03 (SELECT dan UPDATE kolom status bookings, INSERT status_events). T-005 membuat kedua role dan grant minimum; T-042/T-043 hanya menetapkan ownership fungsi.
