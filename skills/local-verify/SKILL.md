@@ -50,6 +50,7 @@ Script harus gagal dengan exit code non-zero jika tahap wajib gagal. Jangan meng
 ## Pemeriksaan keamanan minimum
 Pastikan suite mencakup, sesuai fase:
 - role `app_public` ditolak saat mengakses `records`;
+- `booking_public_fn_owner` dan `booking_private_fn_owner` bukan superuser dan tidak memiliki privilege di luar daftar D-11;
 - fungsi slot publik tidak mengembalikan nama/kontak;
 - route privat menolak tanpa sesi;
 - route privat tidak dilayani pada hostname booking;
