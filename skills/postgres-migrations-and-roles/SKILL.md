@@ -11,8 +11,8 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 - Skema `booking`: data booking operasional.
 - Skema `records`: data kulit/kesehatan dan akun internal.
 - `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`.
-- `booking_public_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT pada `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`, SELECT/INSERT pada `bookings`; tanpa UPDATE/DELETE atau hak `records`.
-- `booking_private_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT dan UPDATE kolom `status` pada `bookings`, INSERT pada `status_events`; tanpa hak tabel/kolom lain atau hak `records`.
+- Sesuai D-11, `booking_public_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT pada `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`, SELECT/INSERT pada `bookings`; tanpa UPDATE/DELETE atau hak `records`.
+- Sesuai D-11, `booking_private_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT dan UPDATE kolom `status` pada `bookings`, INSERT pada `status_events`; tanpa hak tabel/kolom lain atau hak `records`.
 - T-005 membuat kedua role owner dan grant tabel/kolom minimum. T-042/T-043 hanya membuat fungsi dan menetapkan ownership yang sesuai; tidak membuat grant tabel baru.
 - `app_private`: SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; tanpa DML langsung pada `bookings`; status hanya melalui `set_booking_status`; DML yang diperlukan pada `records` tanpa DDL.
 - Jangan memakai superuser sebagai runtime role.
