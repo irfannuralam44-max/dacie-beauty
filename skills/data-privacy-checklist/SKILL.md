@@ -28,6 +28,8 @@ Wajib untuk setiap task yang menyentuh data pelanggan, booking, nomor WhatsApp, 
 - [ ] Kedua instance memakai image/codebase yang sama tetapi environment dan proses terpisah.
 - [ ] Jalur publik menggunakan role `app_public`.
 - [ ] Jalur privat menggunakan role `app_private`.
+- [ ] Fungsi publik D-02 dimiliki `booking_public_fn_owner` (NOLOGIN, bukan superuser; SELECT tabel konfigurasi dan SELECT/INSERT bookings, tanpa UPDATE/DELETE).
+- [ ] Fungsi status dimiliki `booking_private_fn_owner` (NOLOGIN, bukan superuser; SELECT dan UPDATE kolom status bookings serta INSERT status_events saja); grant tabel/kolom owner hanya dibuat T-005.
 - [ ] `app_public` tidak dapat membaca/menulis/mengakses skema `records`.
 - [ ] Fungsi publik hanya mengembalikan data minimum dan tidak menyertakan nama/kontak.
 - [ ] Route privat membutuhkan sesi aplikasi sah.
