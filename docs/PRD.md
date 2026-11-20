@@ -2,10 +2,10 @@
 ## Dacie Beauty — Booking Online dan Rekam Kulit Privat
 
 - **Status:** Draft baseline untuk implementasi
-- **Versi dokumen:** 1.2
+- **Versi dokumen:** 1.3
 - **Tanggal:** 20 November 2026
 - **Repositori:** `irfannuralam44-max/dacie-beauty` (private)
-- **Branch dokumen:** `docs/DOC-009-audit-fixes` (perubahan ini berangkat dari DOC-008) (riwayat branch dokumen dipetakan di `AGENTS.md`)
+- **Branch dokumen terbaru:** `docs/DOC-010-audit-cleanup`; riwayat dan pemetaan branch dokumen lihat `AGENTS.md` bagian 1.2.
 - **Bahasa produk dan dokumentasi:** Bahasa Indonesia
 - **Zona waktu operasional:** `Asia/Jakarta`
 
@@ -264,7 +264,9 @@ Prioritas: **P0** = wajib untuk MVP/fase terkait, **P1** = penting, **P2** = set
   1. `booking.get_public_config()`: treatment aktif (id, nama, durasi menit, jeda menit), jam kerja provider aktif per hari (provider_id, hari, mulai, selesai; tanpa nama provider), pengecualian `time_off`, dan `booking_rules`.
   2. `booking.get_blocked_intervals(p_from, p_to)`: hanya `provider_id`, `starts_at`, `ends_at` untuk booking pending/confirmed yang beririsan. Rentang maksimum 35 hari; rentang lebih panjang ditolak. Tidak mengembalikan ID booking, nama, nomor, atau status.
   3. `booking.create_booking(p_name, p_wa, p_treatment_id, p_starts_at)`: satu-satunya jalur menulis booking publik. Fungsi memvalidasi D-06, menormalisasi ulang WhatsApp, memilih provider menurut D-04, menulis aman terhadap request bersamaan, dan hanya mengembalikan `created`, `slot_taken`, `invalid`, atau `limit_reached`.
-- Ketiga fungsi publik menggunakan `SECURITY DEFINER`, dimiliki role khusus `NOLOGIN` (misalnya `booking_fn_owner`) dengan hak minimum, bukan superuser; `search_path` dikunci, objek dikualifikasi schema, `REVOKE ALL ... FROM PUBLIC`, dan `GRANT EXECUTE` hanya kepada `app_public`. Argumen dan hasil divalidasi. Sintaks dan privilege detail diverifikasi pada task database.
+- Ketiga fungsi publik menggunakan `SECURITY DEFINER` dan dimiliki `booking_public_fn_owner` (NOLOGIN, bukan superuser). Role owner ini hanya memiliki USAGE pada schema `booking`, SELECT pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`, serta SELECT dan INSERT pada `bookings`; tidak memiliki UPDATE atau DELETE. Role ini tidak memiliki hak pada schema `records`.
+- `booking.set_booking_status` menggunakan `SECURITY DEFINER` dan dimiliki role terpisah `booking_private_fn_owner` (NOLOGIN, bukan superuser). Role ini hanya memiliki USAGE pada schema `booking`, SELECT dan UPDATE kolom status pada `bookings`, serta INSERT pada `status_events`; tidak memiliki hak tabel/kolom lain atau hak pada schema `records`.
+- `T-005` membuat kedua role owner dan seluruh grant tabel/kolom minimum di atas. `T-042` dan `T-043` hanya membuat fungsi dan menetapkan ownership ke role yang sesuai; keduanya tidak membuat grant tabel baru. Kedua owner memakai `search_path` terkunci, objek schema-qualified, `REVOKE ALL ... FROM PUBLIC`, dan EXECUTE hanya diberikan kepada role aplikasi yang ditentukan. Argumen dan hasil divalidasi.
 - `app_private` memiliki `SELECT` pada seluruh tabel schema `booking`; `INSERT` dan `UPDATE` (tanpa DELETE, gunakan `is_active`) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa INSERT/UPDATE/DELETE langsung pada `booking.bookings`. Perubahan status hanya melalui `booking.set_booking_status(p_booking_id, p_new_status, p_actor_user_id)` dengan `SECURITY DEFINER` dan kontrol owner/`search_path`/grant yang sama ketatnya.
 - `booking.set_booking_status` mengizinkan pending → confirmed/cancelled; confirmed → cancelled/completed/no_show; completed dan no_show hanya dapat ditetapkan jika `starts_at` sudah lewat. Setiap transisi dicatat pada `booking.status_events` (booking_id, dari, ke, actor_user_id tanpa FK lintas schema, waktu).
 - `app_private` memiliki hak penuh yang diperlukan pada schema `records`, tanpa hak DDL dan bukan pemilik objek.
@@ -389,7 +391,7 @@ Keamanan berikut adalah kriteria penerimaan, bukan pekerjaan opsional.
 - `app_public` tidak dapat SELECT, INSERT, UPDATE, atau DELETE langsung pada tabel mana pun.
 - `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE hanya pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa DML langsung pada `bookings`; perubahan status hanya melalui `booking.set_booking_status`.
 - `app_private` memiliki hak DML yang diperlukan pada `records`, tanpa hak DDL dan bukan pemilik objek.
-- Semua fungsi `SECURITY DEFINER` dimiliki role khusus `NOLOGIN` dengan hak minimum, bukan superuser; `search_path` dikunci; objek dikualifikasi schema; hak EXECUTE dari `PUBLIC` dicabut dan hanya diberikan kepada role aplikasi yang ditentukan.
+- Fungsi D-02 dimiliki `booking_public_fn_owner` (NOLOGIN, bukan superuser) dengan USAGE schema booking, SELECT tabel konfigurasi, serta SELECT/INSERT bookings; tanpa UPDATE/DELETE. Fungsi D-03 dimiliki `booking_private_fn_owner` (NOLOGIN, bukan superuser) dengan USAGE schema booking, SELECT dan UPDATE kolom status pada bookings, serta INSERT status_events. Hak kedua owner tidak tumpang tindih di kolom UPDATE bookings; tidak ada hak records. T-005 membuat kedua role/grant; T-042/T-043 hanya menetapkan ownership fungsi tanpa grant tabel baru. `search_path` dikunci; objek dikualifikasi schema; hak EXECUTE dari `PUBLIC` dicabut dan hanya diberikan kepada role aplikasi yang ditentukan.
 - Hak default untuk tabel/sequence/fungsi baru ditinjau agar migrasi tidak tanpa sengaja memberi hak kepada `PUBLIC` atau role publik.
 - Test integrasi membuktikan `app_public` tidak dapat SELECT atau INSERT langsung ke tabel apa pun, tidak dapat mengakses schema `records`, dan hanya dapat menjalankan fungsi yang diberikan.
 - Detail sintaks PostgreSQL, exclusion constraint, extension `btree_gist`, dan hak membuat extension perlu diverifikasi pada discovery/task database.
@@ -405,6 +407,7 @@ Keamanan berikut adalah kriteria penerimaan, bukan pekerjaan opsional.
 - Output di-escape sesuai konteks; jangan menyisipkan HTML mentah dari input pengguna.
 - Semua query menggunakan parameter binding; dilarang menyusun SQL dari input mentah.
 - Rate limit login dan booking.
+- Alamat IP klien hanya dipercaya dari header yang ditetapkan Cloudflare dan hanya bila request terbukti datang melalui Cloudflare Tunnel; header serupa dari koneksi langsung tidak dipercaya.
 - CAPTCHA gratis (misalnya Cloudflare Turnstile) hanya setelah kuota, batas, dan syarat layanan diverifikasi.
 - Error publik tidak boleh membocorkan stack trace, query, path server, konfigurasi, atau data pelanggan.
 - Tidak ada data pelanggan di log aplikasi. Gunakan ID korelasi acak bila dibutuhkan untuk debugging.
@@ -571,6 +574,7 @@ Agent wajib menjalankan script ini sebelum push dan mencantumkan perintah serta 
 | Role publik memperoleh akses ke records | Kebocoran data kulit | Role terpisah, privilege minimum, test PostgreSQL nyata |
 | Route privat dapat diakses melalui host publik | Eksposur data sensitif | Host allowlist, blok route privat pada host booking, E2E/integration test |
 | Kode privat tetap ada dalam image Docker yang sama tetapi tidak aktif pada instance publik tanpa kredensial privat | Jika ada bug/RCE pada jalur publik, kode privat yang ikut terkemas tetap merupakan risiko residual | Startup web-public menolak secret privat; route mode silang 404; tes impor membuktikan modul/koneksi privat tidak dapat dimuat dari jalur publik |
+| Header IP klien dipalsukan atau counter rate limit hilang saat restart | Rate limit booking/login dapat dilewati atau kehilangan hitungan sementara | Hanya percaya header Cloudflare pada request yang terbukti lewat Tunnel; T-014/T-018/T-031 menambahkan validasi dan tes spoofing; T-014 mencatat pilihan penyimpanan counter dan dampak restart |
 | Booking ganda saat request bersamaan | Gangguan operasional | Constraint database dan integration test konkurensi |
 | Jam kerja/durasi berubah tanpa konsistensi | Slot salah | Perhitungan server, transaksi, validasi ulang |
 | Salah normalisasi WhatsApp | Profil ganda atau salah taut | Fungsi normalisasi tunggal dan test variasi input |
@@ -714,6 +718,11 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 
 ### K-08 — Hak app_private untuk mengelola tabel konfigurasi booking
 
+
+
+### K-09 — Sumber IP klien dan penyimpanan counter rate limit
+
+**Status:** Risiko terbuka; ditutup melalui T-014, T-018, dan T-031. Ini bukan keputusan arsitek baru. Risiko meliputi pemalsuan header IP bila request tidak terbukti melewati Cloudflare Tunnel serta hilangnya hitungan rate limit dalam penyimpanan memori saat proses restart. Implementasi wajib hanya mempercayai header yang ditetapkan Cloudflare pada jalur Tunnel terverifikasi, mengabaikan header spoof dari koneksi langsung, menguji kedua kondisi, dan mencatat pilihan penyimpanan counter beserta dampak restart pada laporan T-014.
 **Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` memperoleh SELECT seluruh tabel booking dan INSERT/UPDATE (tanpa DELETE) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`. Gunakan `is_active` untuk menonaktifkan entitas; role ini tidak memperoleh DML langsung pada `bookings`.
 
 ## 18. Riwayat perubahan
@@ -723,3 +732,4 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 | 1.0 | 19 November 2026 | PRD awal berdasarkan spesifikasi dan keputusan arsitektur pemilik |
 | 1.1 | 19 November 2026 | Review kesesuaian awal |
 | 1.2 | 20 November 2026 | Keputusan arsitek D-01 sampai D-10: dua instance, kontrak privilege/fungsi booking, aturan booking, hardening, dan task tambahan |
+| 1.3 | 20 November 2026 | DOC-009: pemecahan T-005, penambahan T-042/T-043, fixture WhatsApp produksi, IP tepercaya, dan tambahan tes. DOC-010: K-09 serta klarifikasi dua role owner fungsi NOLOGIN dengan privilege tabel/kolom terpisah |
