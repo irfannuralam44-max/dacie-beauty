@@ -293,13 +293,13 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menyediakan dataset sintetis konsisten untuk semua unit/integration/E2E tests.
 - **Dependensi:** T-005 dan T-042.
-- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan fixture nomor seluler Indonesia yang memenuhi aturan normalisasi/validasi produksi yang telah diverifikasi; kumpulkan seluruh nomor fixture dalam satu blok data terdokumentasi sebagai nomor khusus test, tidak pernah dihubungi; tidak boleh ada perilaku fungsi atau validasi yang bergantung pada environment; data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
+- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan fixture nomor seluler Indonesia yang memenuhi aturan normalisasi/validasi produksi yang telah diverifikasi; kumpulkan seluruh nomor fixture dalam satu blok data bernama `TEST_WA_FIXTURES` yang terdokumentasi sebagai nomor khusus test, tidak pernah dihubungi; tidak boleh ada perilaku fungsi atau validasi yang bergantung pada environment; data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
 - **Di luar scope:** data pelanggan asli, nomor WA yang dapat dihubungi, seeding production, isi catatan sensitif nyata.
 - **Kemungkinan file:** `db/seed/*`, test fixtures, `tests/fixtures/*`, dokumentasi seeder.
 - **Acceptance criteria:**
   - [ ] Seeder mengisi treatment, provider, jam kerja, dan customer fiktif.
   - [ ] Semua nama customer diawali `Contoh`.
-  - [ ] Nomor fixture memenuhi aturan format/normalisasi produksi yang telah diverifikasi, disimpan pada satu blok fixture terdokumentasi sebagai nomor khusus test, dan tidak pernah dihubungi; sistem tidak mengirim pesan otomatis.
+  - [ ] Nomor fixture memenuhi aturan format/normalisasi produksi yang telah diverifikasi, disimpan pada satu blok `TEST_WA_FIXTURES` yang terdokumentasi sebagai nomor khusus test, dan tidak pernah dihubungi; sistem tidak mengirim pesan otomatis.
   - [ ] Fungsi dan validasi produksi tidak memiliki cabang atau pengecualian berdasarkan environment untuk nomor fixture.
   - [ ] Seeder dapat dijalankan berulang tanpa membuat duplikasi atau merusak data lain.
   - [ ] Semua E2E/integration tests menggunakan dataset seeder/fixture sintetis ini.
