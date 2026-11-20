@@ -149,7 +149,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** membuat role database dan menerapkan privilege minimum D-02/D-03.
 - **Dependensi:** T-004.
-- **Scope:** role runtime `app_public` dan `app_private`; dua role pemilik fungsi terpisah: `booking_public_fn_owner` dan `booking_private_fn_owner`, keduanya NOLOGIN dan bukan superuser; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
+- **Scope:** role runtime `app_public` dan `app_private`; dua role pemilik fungsi terpisah sesuai D-11: `booking_public_fn_owner` dan `booking_private_fn_owner`, keduanya NOLOGIN dan bukan superuser; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
 - **Di luar scope:** UI booking, UI rekam kulit, dan logika pemilihan slot.
 - **Kemungkinan file:** migrasi role/grant, integration tests, dokumentasi privilege.
 - **Acceptance criteria:**
@@ -173,7 +173,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** menyediakan satu-satunya implementasi SQL untuk tiga fungsi publik D-02.
 - **Dependensi:** T-004, T-005.
-- **Scope:** implementasi `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; seluruh acceptance criteria D-02 yang sebelumnya tercampur di T-005; SECURITY DEFINER, ownership ke `booking_public_fn_owner` yang dibuat T-005, search_path terkunci, objek schema-qualified, REVOKE ALL FROM PUBLIC, GRANT EXECUTE hanya kepada `app_public`, validasi argumen dan output. Tidak membuat grant tabel baru; privilege tabel owner seluruhnya disiapkan T-005. validasi D-06, normalisasi WA, provider auto-assign D-04, dan atomicity sesuai keputusan arsitektur.
+- **Scope:** implementasi `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; seluruh acceptance criteria D-02 yang sebelumnya tercampur di T-005; SECURITY DEFINER, ownership ke `booking_public_fn_owner` yang dibuat T-005, search_path terkunci, objek schema-qualified, REVOKE ALL FROM PUBLIC, GRANT EXECUTE hanya kepada `app_public`, validasi argumen dan output. Tidak membuat grant tabel baru; privilege tabel owner seluruhnya disiapkan T-005. Validasi D-06, normalisasi WA, provider auto-assign D-04, dan atomicity sesuai keputusan arsitektur.
 - **Di luar scope:** repository/route handler Next.js, UI, serta fungsi `booking.set_booking_status`.
 - **Kemungkinan file:** SQL migrations untuk fungsi, integration tests PostgreSQL, dokumentasi kontrak output.
 - **Acceptance criteria:**
