@@ -46,14 +46,14 @@ Dokumen yang tidak perlu diubah berdasarkan keputusan ini—`CLAUDE.md`, kedua t
 
 - `docs/PRD.md`: bagian 7.2 dan 9.2; K-02/K-03 ditandai diputuskan arsitek.
 - `AGENTS.md`: bagian 1.1 dan 5.2.
-- `docs/IMPLEMENTATION-TASKS.md`: pembagian task SQL publik yang pada saat DOC-008 masih tercatat pada T-005 kini disupersesi DOC-009: T-042 memiliki SQL; T-010/T-011/T-012 memakai lapisan aplikasi/slot.
+- `docs/IMPLEMENTATION-TASKS.md`: scope SQL publik yang sebelumnya tercantum dalam satu task kini dipisah oleh DOC-009: T-042 memiliki SQL; T-010/T-011/T-012 memakai lapisan aplikasi/slot.
 - `skills/postgres-migrations-and-roles/SKILL.md` dan checklist audit: tanpa privilege tabel bagi app_public; SECURITY DEFINER owner NOLOGIN; search_path/REVOKE/GRANT; output minimum.
 
 ### D-03 — Hak app_private dan set_booking_status
 
 - `docs/PRD.md`: bagian 7.2, 8.1, 9.2; K-07/K-08 ditandai diputuskan arsitek.
 - `AGENTS.md`: bagian 1.1 dan 5.2.
-- `docs/IMPLEMENTATION-TASKS.md`: fungsi status yang pada saat DOC-008 masih tercatat pada T-005 kini disupersesi DOC-009: T-043 memiliki SQL; T-025 memanggil fungsi; T-026 mengelola konfigurasi.
+- `docs/IMPLEMENTATION-TASKS.md`: scope fungsi status kini dipisah oleh DOC-009: T-043 memiliki SQL; T-025 memanggil fungsi; T-026 mengelola konfigurasi.
 - Skill PostgreSQL dan checklist audit: SELECT booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi; tidak ada DML langsung pada bookings; status_events dan transisi status.
 
 ### D-04 — Provider otomatis
