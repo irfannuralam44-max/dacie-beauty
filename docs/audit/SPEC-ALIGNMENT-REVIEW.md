@@ -7,7 +7,7 @@
 
 ## 1. Kesimpulan
 
-Dokumen ini merekam review DOC-007 sebelum keputusan arsitek. Pada DOC-008, arsitek menetapkan satu codebase dan satu image Docker yang dijalankan sebagai dua instance terpisah; kontrak privilege D-02/D-03; aturan booking D-04 sampai D-06; pemberitahuan privasi D-07; hardening D-08; aturan Git D-09; dan task tambahan D-10. K-02 dan K-07 yang dahulu terbuka telah diputuskan melalui D-02 dan D-03. Gunakan PRD versi 1.2, AGENTS.md, IMPLEMENTATION-PLAN.md, IMPLEMENTATION-TASKS.md, skills, dan checklist pada branch DOC-008 sebagai sumber kebenaran terbaru.
+Dokumen ini merekam review DOC-007 sebelum keputusan arsitek. Pada DOC-008, arsitek menetapkan satu codebase dan satu image Docker yang dijalankan sebagai dua instance terpisah; kontrak privilege D-02/D-03; aturan booking D-04 sampai D-06; pemberitahuan privasi D-07; hardening D-08; aturan Git D-09; dan task tambahan D-10. K-02 dan K-07 yang dahulu terbuka telah diputuskan melalui D-02 dan D-03. Dokumen ini adalah review historis DOC-007. Untuk status terkini, gunakan PRD versi 1.3, AGENTS.md, IMPLEMENTATION-PLAN.md, backlog 43 task, skills, dan checklist pada branch DOC-010 atau branch dokumentasi terbaru yang ditetapkan pemilik.
 
 Review ini hanya memeriksa dokumen. Tidak ada aplikasi yang dibangun, tidak ada test kode yang dijalankan, dan tidak ada klaim implementasi sudah aman.
 
@@ -135,9 +135,9 @@ Keputusan yang dahulu diminta pada review DOC-007 kini ditetapkan arsitek dan di
 1. **K-02 — D-02:** tiga fungsi publik terbatas; app_public tanpa privilege tabel.
 2. **K-07/K-08 — D-03:** app_private membaca booking, mengelola tabel konfigurasi dengan INSERT/UPDATE tanpa DELETE, dan mengubah status hanya melalui fungsi set_booking_status.
 
-Rincian keputusan D-01 sampai D-10 berada pada PRD versi 1.2, backlog, dan rencana implementasi di branch DOC-008. Laporan DOC-007 ini tetap disimpan sebagai catatan historis dan tidak lagi menjadi sumber status keputusan.
+Rincian keputusan D-01 sampai D-10 tetap berada pada PRD, backlog 43 task, dan rencana implementasi. Klarifikasi D-11 mengenai dua role owner fungsi yang terpisah berada pada PRD versi 1.3, AGENTS.md, T-005/T-042/T-043, dan skill PostgreSQL di branch DOC-010. Laporan DOC-007 ini tetap disimpan sebagai catatan historis dan tidak lagi menjadi sumber status keputusan.
 
 ---
 
-**Verdict DOC-007 (historis):** PASS dengan dua keputusan terbuka pada saat itu. Kedua keputusan kini ditutup melalui D-02 dan D-03 pada DOC-008. Laporan terbaru DOC-008 menjadi acuan.  
+**Verdict DOC-007 (historis):** PASS dengan dua keputusan terbuka pada saat itu. Kedua keputusan kini ditutup melalui D-02 dan D-03 pada DOC-008. Laporan DOC-008/DOC-009 tetap menjadi riwayat; laporan DOC-010 dan dokumen terbaru menjadi acuan.  
 **Status implementasi:** belum dimulai.
