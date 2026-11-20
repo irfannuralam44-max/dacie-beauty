@@ -95,7 +95,7 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data 
 | 0.2 | T-002 | Runtime lokal | Compose web-public, web-private, PostgreSQL dari satu image aplikasi | M |
 | 0.3 | T-003 | Kontrak konfigurasi | APP_MODE dan secret validation per instance | S |
 | 0.4 | T-004 | Skema dan migrasi | Schema booking/records, tabel, exclusion constraint overlap, verifikasi btree_gist/hak extension | L |
-| 0.5 | T-005 | Role database | app_public/app_private, dua owner fungsi NOLOGIN terpisah dan grant tabel/kolom minimum; tanpa fungsi | M |
+| 0.5 | T-005 | Role database | app_public/app_private, `booking_public_fn_owner` dan `booking_private_fn_owner` NOLOGIN terpisah dengan grant tabel/kolom minimum D-11; tanpa fungsi | M |
 | 0.6 | T-042 | Fungsi publik | get_public_config, get_blocked_intervals, create_booking (satu pemilik SQL) | L |
 | 0.7 | T-043 | Fungsi status | set_booking_status, status_events, matriks transisi D-03 | M |
 | 0.8 | T-006 | Data access | Pool dipilih saat startup berdasarkan APP_MODE; public tidak dapat membuat pool private | M |
@@ -112,7 +112,7 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data 
 - T-004 mendahului T-005, T-042, dan T-043; T-042 bergantung pada T-004/T-005, sedangkan T-043 bergantung pada T-005. Exclusion constraint harus tersedia di T-004 sebelum create_booking T-042.
 - T-005 mendahului T-006, T-042, dan T-043; T-042 mendahului T-010/T-011/T-012 dan T-039.
 - T-008 adalah gerbang keamanan wajib. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042.
-- T-005 membuat role runtime, dua owner fungsi NOLOGIN terpisah, grant tabel/kolom minimum, dan default privileges tanpa membuat fungsi. T-042 adalah satu-satunya pemilik SQL untuk tiga fungsi publik D-02 dan menetapkan owner `booking_public_fn_owner`; T-043 membuat SQL set_booking_status/status_events dan menetapkan owner `booking_private_fn_owner`. Seluruh grant tabel/kolom kedua owner hanya dibuat T-005. T-004 membuat exclusion constraint overlap sebelum T-042 memakai mekanisme tersebut.
+- T-005 membuat role runtime, `booking_public_fn_owner` dan `booking_private_fn_owner` (NOLOGIN, bukan superuser), grant tabel/kolom minimum D-11, dan default privileges tanpa membuat fungsi. T-042 adalah satu-satunya pemilik SQL untuk tiga fungsi publik D-02 dan menetapkan owner `booking_public_fn_owner`; T-043 membuat SQL set_booking_status/status_events dan menetapkan owner `booking_private_fn_owner`. Seluruh grant tabel/kolom kedua owner hanya dibuat T-005. T-004 membuat exclusion constraint overlap sebelum T-042 memakai mekanisme tersebut.
 - T-038 mencatat sumber resmi, URL, dan tanggal untuk batas Access serta syarat Turnstile. Versi/batas layanan yang belum terbukti diberi label "perlu diverifikasi".
 - Pilihan driver database, runner test, dan sintaks extension PostgreSQL diverifikasi pada task; jangan menebak versi atau kemampuan layanan.
 
