@@ -36,6 +36,7 @@ Wajib untuk setiap task yang menyentuh route, Server Component, Client Component
 - Tidak boleh ada field keluhan, alergi, jenis kulit, foto, atau data kesehatan pada form publik.
 - Data kulit/kesehatan hanya di skema `records`.
 - Role publik tidak memiliki privilege tabel apa pun; hanya boleh EXECUTE tiga fungsi D-02 dan tidak memiliki USAGE pada schema `records`.
+- Fungsi D-02 dimiliki `booking_public_fn_owner` (NOLOGIN, bukan superuser; SELECT tabel konfigurasi dan SELECT/INSERT bookings, tanpa UPDATE/DELETE). Fungsi status dimiliki `booking_private_fn_owner` (NOLOGIN, bukan superuser; SELECT dan UPDATE kolom status bookings, INSERT status_events). Grant tabel/kolom owner dibuat T-005; task fungsi hanya menetapkan ownership.
 - `web-public` 404 untuk route mode privat; `web-private` 404 untuk route mode publik. Host guard allowlist menjadi lapisan kedua.
 - `web-public` hanya menerima `app_public` dan secret CAPTCHA; `web-private` hanya menerima `app_private` dan secret sesi.
 - `get_public_config`, `get_blocked_intervals`, dan `create_booking` adalah satu-satunya fungsi publik. Output interval tidak boleh mengandung ID booking, nama, nomor, atau status.
