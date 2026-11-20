@@ -5,7 +5,7 @@
 - **Versi dokumen:** 1.2
 - **Tanggal:** 20 November 2026
 - **Repositori:** `irfannuralam44-max/dacie-beauty` (private)
-- **Branch dokumen:** `docs/DOC-008-architect-decisions` (riwayat branch dokumen dipetakan di `AGENTS.md`)
+- **Branch dokumen:** `docs/DOC-009-audit-fixes` (perubahan ini berangkat dari DOC-008) (riwayat branch dokumen dipetakan di `AGENTS.md`)
 - **Bahasa produk dan dokumentasi:** Bahasa Indonesia
 - **Zona waktu operasional:** `Asia/Jakarta`
 
@@ -533,6 +533,13 @@ Pilihan alat berikut adalah rekomendasi awal, bukan versi paket yang sudah dikun
 - Unit test perhitungan slot, durasi, jeda, dan zona waktu.
 - Integration test pembuatan booking.
 - Integration test dua request bersamaan pada slot/provider yang sama; satu harus ditolak.
+- Integration test bahwa `get_blocked_intervals` menolak rentang lebih dari 35 hari.
+- Integration test batas maksimal dua booking aktif pending/confirmed yang belum lewat per nomor WA.
+- Integration test seluruh matriks transisi status D-03, termasuk syarat waktu untuk completed/no_show.
+- Integration test startup `web-public` ditolak bila credential/secret privat ditemukan.
+- Integration test kedua instance mengembalikan 404 untuk route mode silang.
+- Integration test aturan langkah slot, waktu pesan minimal (min_notice), dan maksimal hari ke depan (max_advance).
+- Integration test pengecualian jadwal `time_off` per provider.
 - Integration test hak akses: `app_public` tidak dapat membaca skema `records`.
 - Integration test fungsi slot hanya mengembalikan informasi waktu terisi tanpa nama/kontak.
 - Integration test rute privat menolak request tanpa sesi.
@@ -562,7 +569,7 @@ Agent wajib menjalankan script ini sebelum push dan mencantumkan perintah serta 
 |---|---|---|
 | Role publik memperoleh akses ke records | Kebocoran data kulit | Role terpisah, privilege minimum, test PostgreSQL nyata |
 | Route privat dapat diakses melalui host publik | Eksposur data sensitif | Host allowlist, blok route privat pada host booking, E2E/integration test |
-| Koneksi privat tersedia dalam proses Next.js yang juga melayani publik | Jika ada bug/RCE pada jalur publik, credential privat berpotensi terpapar | Pembatasan modul server, tidak pernah mengimpor koneksi privat ke bundle/jalur publik, audit boundary; lihat Catatan keberatan |
+| Kode privat tetap ada dalam image Docker yang sama tetapi tidak aktif pada instance publik tanpa kredensial privat | Jika ada bug/RCE pada jalur publik, kode privat yang ikut terkemas tetap merupakan risiko residual | Startup web-public menolak secret privat; route mode silang 404; tes impor membuktikan modul/koneksi privat tidak dapat dimuat dari jalur publik |
 | Booking ganda saat request bersamaan | Gangguan operasional | Constraint database dan integration test konkurensi |
 | Jam kerja/durasi berubah tanpa konsistensi | Slot salah | Perhitungan server, transaksi, validasi ulang |
 | Salah normalisasi WhatsApp | Profil ganda atau salah taut | Fungsi normalisasi tunggal dan test variasi input |
@@ -610,8 +617,8 @@ Bagian ini bukan izin untuk mengubah keputusan arsitektur. Item yang belum diket
 |---|---|---|
 | A-01 | Domain aktual untuk `booking.<domain>` dan `rekam.<domain>` belum diberikan | Minta domain saat persiapan deployment |
 | A-02 | Dua alamat email allowlist Cloudflare Access belum diberikan | Konfigurasikan hanya di dashboard/secret store; jangan masukkan ke repo |
-| A-03 | Batas paket gratis Cloudflare Access dan konfigurasi policy yang dibutuhkan belum diverifikasi | Discovery resmi sebelum Fase 3 |
-| A-04 | Batas dan syarat Cloudflare Turnstile gratis belum diverifikasi | Discovery resmi sebelum Fase 1 |
+| A-03 | Batas paket gratis Cloudflare Access dan konfigurasi policy yang dibutuhkan belum diverifikasi | T-038 (Fase 0), dikonfirmasi ulang di T-032 |
+| A-04 | Batas dan syarat Cloudflare Turnstile gratis belum diverifikasi | T-038, sebelum T-014 |
 | A-05 | Versi stabil PostgreSQL dan Node.js LTS yang tepat belum dipilih | Verifikasi dokumentasi resmi saat Fase 0 |
 | A-06 | Versi Next.js, React, TypeScript, driver `pg`, library Argon2, Playwright, dan Gitleaks belum dikunci | Verifikasi kompatibilitas dan versi yang didukung; jangan menebak |
 | A-07 | Jam operasional, hari kerja, durasi tiap treatment, jeda antar sesi belum diberikan | Pemilik mengisi pengaturan awal sebelum uji booking |
