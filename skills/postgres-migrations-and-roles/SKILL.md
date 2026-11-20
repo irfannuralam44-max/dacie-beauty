@@ -10,7 +10,10 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 
 - Skema `booking`: data booking operasional.
 - Skema `records`: data kulit/kesehatan dan akun internal.
-- `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`. Role/grant dikerjakan terpisah dari SQL fungsi: T-005 mengelola role dan privilege; T-042 satu-satunya pemilik SQL tiga fungsi publik.
+- `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`.
+- `booking_public_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT pada `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`, SELECT/INSERT pada `bookings`; tanpa UPDATE/DELETE atau hak `records`.
+- `booking_private_fn_owner`: NOLOGIN, bukan superuser; USAGE schema `booking`, SELECT dan UPDATE kolom `status` pada `bookings`, INSERT pada `status_events`; tanpa hak tabel/kolom lain atau hak `records`.
+- T-005 membuat kedua role owner dan grant tabel/kolom minimum. T-042/T-043 hanya membuat fungsi dan menetapkan ownership yang sesuai; tidak membuat grant tabel baru.
 - `app_private`: SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; tanpa DML langsung pada `bookings`; status hanya melalui `set_booking_status`; DML yang diperlukan pada `records` tanpa DDL.
 - Jangan memakai superuser sebagai runtime role.
 - Jangan memberi hak ke `PUBLIC` tanpa alasan yang eksplisit dan ditinjau.
@@ -25,7 +28,7 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 5. Tentukan owner objek, schema usage, table privileges, sequence privileges, function execute privileges, dan default privileges.
 6. Revoke hak yang tidak diperlukan dari `PUBLIC` dan role runtime.
 7. Berikan hanya grant yang diperlukan untuk use case task.
-8. Pisahkan ownership task: T-005 hanya membuat role/grant/default privileges dan tes privilege; T-042 satu-satunya task yang membuat SQL `get_public_config`, `get_blocked_intervals`, dan `create_booking`; T-043 membuat SQL `set_booking_status`/status_events. T-010 dan T-012 hanya lapisan aplikasi dan tidak boleh menggandakan SQL.
+8. Pisahkan ownership task dan grant: T-005 membuat role runtime, `booking_public_fn_owner`, `booking_private_fn_owner`, serta seluruh grant tabel/kolom minimum dan tes privilege. Owner publik hanya SELECT tabel konfigurasi dan SELECT/INSERT bookings; owner privat hanya SELECT dan UPDATE kolom status bookings serta INSERT status_events. T-042 satu-satunya task yang membuat SQL `get_public_config`, `get_blocked_intervals`, dan `create_booking`, lalu menetapkan owner publik; T-043 membuat SQL `set_booking_status` dan menetapkan owner privat. T-042/T-043 tidak membuat grant tabel baru. T-010/T-012 hanya lapisan aplikasi.
 9. Untuk fungsi publik:
    - output minimum;
    - tidak mengembalikan nama/kontak;
@@ -52,7 +55,7 @@ Uji dengan dua transaksi/request bersamaan. Hasil yang benar: paling banyak satu
 - Jangan membuat helper generik yang memungkinkan request memilih nama role atau pool.
 - Jangan mengimpor koneksi privat dari modul yang dapat dipanggil route publik.
 - `app_public` tidak memiliki privilege tabel; ia hanya boleh menjalankan tiga fungsi publik D-02.
-- Fungsi D-02 dan `booking.set_booking_status` memakai SECURITY DEFINER, owner NOLOGIN khusus berhak minimum, bukan superuser; search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; GRANT EXECUTE hanya ke role yang ditetapkan.
+- Fungsi D-02 memakai SECURITY DEFINER dengan owner `booking_public_fn_owner`; fungsi status memakai owner `booking_private_fn_owner`. Keduanya NOLOGIN dan bukan superuser. Grant tabel/kolom owner dibuat hanya di T-005; task fungsi hanya menetapkan ownership. Search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; GRANT EXECUTE hanya ke role yang ditetapkan.
 - `app_private` memiliki SELECT semua tabel booking dan INSERT/UPDATE tanpa DELETE pada tabel konfigurasi yang ditetapkan D-03. Ia tidak memiliki DML langsung pada `booking.bookings`.
 - Perubahan status booking hanya melalui `booking.set_booking_status`; transisi divalidasi dan ditulis ke `booking.status_events`.
 - `app_private` memiliki DML yang diperlukan pada `records`, tanpa DDL dan bukan pemilik objek.
