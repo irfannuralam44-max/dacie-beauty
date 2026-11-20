@@ -164,3 +164,8 @@ Tidak ada perintah shell yang dijalankan. Pembacaan dan perubahan dilakukan mela
 ---
 
 **Status pekerjaan DOC-009:** perubahan dokumentasi disimpan pada branch; menunggu audit dan keputusan merge pemilik.
+
+
+## Errata
+
+Klaim dalam laporan DOC-009 bahwa PRD saat itu telah mencatat keberatan F-05 mengenai pemalsuan header IP dan hilangnya counter rate limit saat restart **tidak benar**. Pada saat DOC-009, PRD hanya memuat catatan K-01 sampai K-08 dan tidak memiliki catatan keberatan F-05 tersebut. Klaim historis pada laporan DOC-009 dipertahankan untuk transparansi dan dikoreksi melalui DOC-010, perbaikan G-01: PRD versi 1.3 kini menambahkan K-09 serta baris risiko yang sesuai.
