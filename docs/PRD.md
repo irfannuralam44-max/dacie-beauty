@@ -718,12 +718,11 @@ Bagian ini menyimpan keberatan historis dan risiko yang masih perlu diperhatikan
 
 ### K-08 — Hak app_private untuk mengelola tabel konfigurasi booking
 
-
+**Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` memperoleh SELECT seluruh tabel booking dan INSERT/UPDATE (tanpa DELETE) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`. Gunakan `is_active` untuk menonaktifkan entitas; role ini tidak memperoleh DML langsung pada `bookings`.
 
 ### K-09 — Sumber IP klien dan penyimpanan counter rate limit
 
 **Status:** Risiko terbuka; ditutup melalui T-014, T-018, dan T-031. Ini bukan keputusan arsitek baru. Risiko meliputi pemalsuan header IP bila request tidak terbukti melewati Cloudflare Tunnel serta hilangnya hitungan rate limit dalam penyimpanan memori saat proses restart. Implementasi wajib hanya mempercayai header yang ditetapkan Cloudflare pada jalur Tunnel terverifikasi, mengabaikan header spoof dari koneksi langsung, menguji kedua kondisi, dan mencatat pilihan penyimpanan counter beserta dampak restart pada laporan T-014.
-**Status:** Diputuskan arsitek, 20 November 2026 — **D-03**. `app_private` memperoleh SELECT seluruh tabel booking dan INSERT/UPDATE (tanpa DELETE) pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`. Gunakan `is_active` untuk menonaktifkan entitas; role ini tidak memperoleh DML langsung pada `bookings`.
 
 ## 18. Riwayat perubahan
 
