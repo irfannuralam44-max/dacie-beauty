@@ -47,7 +47,7 @@ Jika push gagal:
 
 ```text
 Push: GAGAL
-<alasan satu baris>
+Alasan: <satu baris alasan tanpa secret>
 Laporan: <report path>
 ```
 
@@ -262,7 +262,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** integration security tests; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-008-foundation-security-tests.md`.
 
-**Gerbang fase 0:** T-001 sampai T-008 serta T-038 dan T-039 selesai, merged, dan lolos audit; database privilege separation terbukti; spike dua instance/Tunnel/Access dilakukan pada mini PC; dataset sintetis tersedia. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042.
+**Gerbang fase 0:** T-001 sampai T-008 serta T-038, T-039, T-042, dan T-043 selesai, merged, dan lolos audit; database privilege separation dan fungsi D-02/D-03 tersedia; exclusion constraint overlap dari T-004 terbukti; spike dua instance/Tunnel/Access dilakukan pada mini PC; dataset sintetis tersedia. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042; T-042 bergantung pada T-004/T-005; T-043 bergantung pada T-005.
 
 ---
 
@@ -379,7 +379,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Di luar scope:** implementasi SQL fungsi publik, pembuatan constraint database, dan perubahan schema/extension.
 - **Kemungkinan file:** booking application service/repository, validation schema, route handler, integration/E2E tests.
 - **Acceptance criteria:**
-  - [ ] Server memvalidasi seluruh field dan menggunakan aturan normalisasi WhatsApp yang sama dengan fungsi database.
+  - [ ] Server memvalidasi seluruh field dan menggunakan aturan normalisasi WhatsApp yang sama dengan fungsi database; tidak ada perilaku validasi/fungsi yang bercabang berdasarkan environment.
   - [ ] Request memakai role `app_public` dan hanya memanggil fungsi `create_booking`; tidak ada INSERT langsung ke tabel booking.
   - [ ] Batas maksimal dua booking aktif pending/confirmed dan belum lewat per WA ditegakkan oleh fungsi database; lapisan aplikasi memetakan `limit_reached` ke respons aman.
   - [ ] Aturan langkah 30 menit, minimal 3 jam, dan maksimal 30 hari divalidasi server/database; pending tidak kedaluwarsa otomatis.
