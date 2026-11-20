@@ -558,6 +558,7 @@ Satu perintah lokal harus menjalankan sekurang-kurangnya:
 3. Integration test yang membutuhkan PostgreSQL Docker.
 4. Pemeriksaan type/build yang ditetapkan dalam repo.
 5. Secret scanning lokal.
+6. Audit dependency; temuan high/critical menggagalkan verifikasi kecuali pengecualian tertulis yang disetujui dan dicatat.
 
 E2E dapat dijalankan oleh script yang sama atau menjadi langkah terpisah yang tetap wajib sebelum task terkait di-push; keputusan ini harus dijelaskan di `AGENTS.md`. Untuk konsistensi, target akhirnya adalah script verifikasi menyediakan satu entry point dan status keluar non-zero jika ada tahap wajib gagal.
 
