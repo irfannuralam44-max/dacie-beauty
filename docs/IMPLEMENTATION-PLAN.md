@@ -36,20 +36,22 @@ Ukuran task tidak boleh menjadi alasan untuk melewati acceptance criteria. Task 
 Fase 0 — Foundation
   ├─ T-001 bootstrap codebase Next.js + verifikasi advisory resmi
   ├─ T-002/T-003 Docker Compose dua service + APP_MODE/env validation
-  ├─ T-004 schema booking/records + migrations
-  ├─ T-005 role/function grants D-02/D-03
+  ├─ T-004 schema booking/records + migrations + exclusion constraint overlap
+  ├─ T-005 role/grant/default privileges D-02/D-03 (tanpa fungsi)
+  ├─ T-042 fungsi publik D-02 (bergantung T-004/T-005)
+  ├─ T-043 fungsi status D-03 (bergantung T-005)
   ├─ T-006 data access pool terpisah per APP_MODE
   ├─ T-007 verify.sh + audit dependency + secret scan
   ├─ T-008 tes privilege dan boundary
-  ├─ T-039 seeder sintetis (setelah T-005)
+  ├─ T-039 seeder sintetis (setelah T-005 dan T-042)
   └─ T-038 spike awal mini PC/Tunnel/Access (setelah T-008)
           |
           v
 Fase 1 — Booking publik
   ├─ T-009 status dan aturan booking D-04–D-06
-  ├─ T-010 get_public_config
+  ├─ T-010 repository/route konfigurasi publik (memanggil T-042)
   ├─ T-011 slot dengan get_public_config/get_blocked_intervals
-  ├─ T-012 create_booking + provider auto-assign + collision prevention
+  ├─ T-012 validasi server dan pemanggilan create_booking (SQL di T-042)
   ├─ T-013 UI lima field + pemberitahuan privasi
   └─ T-014 abuse protection + T-015 E2E
           |
@@ -60,7 +62,7 @@ Fase 2 — Rekam kulit privat
   ├─ T-019 otorisasi di lapisan repository
   ├─ T-020–T-023 profil, consent, kunjungan, follow-up
   ├─ T-024 daftar booking + sorotan pending >24 jam
-  ├─ T-025 set_booking_status + link WhatsApp
+  ├─ T-025 memanggil set_booking_status (SQL di T-043) + link WhatsApp
   ├─ T-026 pengaturan booking_rules/time_off
   └─ T-027/T-028 audit log + E2E privat
           |
@@ -92,23 +94,25 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data 
 | 0.1 | T-001 | Repository dan struktur | Codebase Next.js, satu image, versi stabil dan advisory diverifikasi | M |
 | 0.2 | T-002 | Runtime lokal | Compose web-public, web-private, PostgreSQL dari satu image aplikasi | M |
 | 0.3 | T-003 | Kontrak konfigurasi | APP_MODE dan secret validation per instance | S |
-| 0.4 | T-004 | Skema dan migrasi | Schema booking/records, tabel dan constraint sesuai PRD | L |
-| 0.5 | T-005 | Role database | app_public/app_private, owner fungsi NOLOGIN, D-02/D-03 grants/functions | XL |
-| 0.6 | T-006 | Data access | Pool dipilih saat startup berdasarkan APP_MODE; public tidak dapat membuat pool private | M |
-| 0.7 | T-007 | Verifikasi lokal | lint, test, secret scan, audit dependency | M |
-| 0.8 | T-008 | Bukti isolasi | privilege dan boundary mode diuji/didokumentasikan | M |
-| 0.9 | T-039 | Seeder sintetis | treatment/provider/jam kerja/customer fiktif untuk seluruh test | M |
-| 0.10 | T-038 | Spike infrastruktur | hello dua instance di mini PC, Tunnel dua hostname, uji Access dua email, discovery Access/Turnstile | L |
-| 0.11 | — | Dokumentasi agent | AGENTS, CLAUDE, skill, template laporan tersedia | S |
+| 0.4 | T-004 | Skema dan migrasi | Schema booking/records, tabel, exclusion constraint overlap, verifikasi btree_gist/hak extension | L |
+| 0.5 | T-005 | Role database | app_public/app_private, owner fungsi NOLOGIN, grant/revoke/default privileges; tanpa fungsi | M |
+| 0.6 | T-042 | Fungsi publik | get_public_config, get_blocked_intervals, create_booking (satu pemilik SQL) | L |
+| 0.7 | T-043 | Fungsi status | set_booking_status, status_events, matriks transisi D-03 | M |
+| 0.8 | T-006 | Data access | Pool dipilih saat startup berdasarkan APP_MODE; public tidak dapat membuat pool private | M |
+| 0.9 | T-007 | Verifikasi lokal | lint, test, secret scan, audit dependency | M |
+| 0.10 | T-008 | Bukti isolasi | privilege dan boundary mode diuji/didokumentasikan | M |
+| 0.11 | T-039 | Seeder sintetis | treatment/provider/jam kerja/customer fiktif untuk seluruh test | M |
+| 0.12 | T-038 | Spike infrastruktur | hello dua instance di mini PC, Tunnel dua hostname, uji Access dua email, discovery Access/Turnstile | L |
+| 0.13 | — | Dokumentasi agent | AGENTS, CLAUDE, skill, template laporan tersedia | S |
 
 ### Dependensi dan catatan
 
 - T-001 mendahului semua perubahan kode; versi Next.js stabil dan advisory resmi diverifikasi serta dicatat URL/tanggalnya.
 - T-002 dan T-003 mendahului pengujian integrasi yang membutuhkan dua mode.
 - T-004 mendahului T-005; grant dan function dibuat berdasarkan struktur tabel yang sudah ditetapkan.
-- T-005 mendahului T-006 dan T-039.
-- T-008 adalah gerbang keamanan wajib. T-038 bergantung pada T-008; T-039 bergantung pada T-005.
-- T-005 menerapkan tiga fungsi publik D-02, set_booking_status dan grant D-03; tidak ada privilege tabel bagi app_public.
+- T-005 mendahului T-006, T-042, dan T-043; T-042 mendahului T-010/T-011/T-012 dan T-039.
+- T-008 adalah gerbang keamanan wajib. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042.
+- T-005 hanya membuat role/grant/default privileges tanpa fungsi. T-042 adalah satu-satunya pemilik SQL untuk tiga fungsi publik D-02; T-043 adalah pemilik SQL untuk set_booking_status/status_events D-03. T-004 membuat exclusion constraint overlap sebelum T-042 memakai mekanisme tersebut.
 - T-038 mencatat sumber resmi, URL, dan tanggal untuk batas Access serta syarat Turnstile. Versi/batas layanan yang belum terbukti diberi label "perlu diverifikasi".
 - Pilihan driver database, runner test, dan sintaks extension PostgreSQL diverifikasi pada task; jangan menebak versi atau kemampuan layanan.
 
@@ -118,7 +122,7 @@ Fase 0 dinyatakan selesai hanya jika:
 - Codebase dan PostgreSQL dapat dijalankan melalui Docker Compose dengan dua service aplikasi dari image yang sama.
 - Startup validation memastikan public mode tidak memiliki credential/secret privat dan hanya membuat pool app_public.
 - Migrasi dapat diterapkan dari database kosong secara berurutan.
-- Grant/function D-02/D-03 dan tes privilege lulus; app_public tidak dapat SELECT/INSERT langsung ke tabel apa pun.
+- Grant/privilege D-02/D-03 dan tes role lulus; fungsi D-02/D-03 (T-042/T-043) serta tesnya selesai; app_public tidak dapat SELECT/INSERT langsung ke tabel apa pun.
 - Seeder sintetis T-039 tersedia untuk unit/integration/E2E.
 - Spike T-038 selesai; dua hostname mencapai instance yang benar, Access diuji dengan dua email, dan discovery resmi didokumentasikan (atau secara eksplisit diberi label "perlu diverifikasi").
 - scripts/verify.sh berjalan lokal termasuk audit dependency.
@@ -147,9 +151,9 @@ Fase 0 dinyatakan selesai hanya jika:
 ### Dependensi dan catatan
 
 - 1.1 mengikuti status D-05: pending/confirmed memblokir slot; cancelled/completed/no_show tidak memblokir slot. Aturan booking D-06 disimpan di booking_rules.
-- 1.2 mengimplementasikan fungsi get_public_config() sesuai D-02; app_public tetap tanpa privilege tabel.
-- 1.3 menggunakan get_public_config dan get_blocked_intervals; slot ditawarkan bila minimal satu provider aktif kosong. T-012 memilih provider otomatis berdasarkan priority.
-- 1.4 wajib diselesaikan sebelum booking dipakai pilot; pemeriksaan ketersediaan di UI saja tidak cukup.
+- 1.2 mengimplementasikan repository/route aplikasi untuk memanggil get_public_config() yang sudah dibuat oleh T-042; app_public tetap tanpa privilege tabel.
+- 1.3 menggunakan get_public_config dan get_blocked_intervals dari T-042; slot ditawarkan bila minimal satu provider aktif kosong. Fungsi create_booking pada T-042 memilih provider otomatis berdasarkan priority.
+- Constraint exclusion dan verifikasi btree_gist dibuat di T-004 sebelum fungsi T-042; T-012 hanya menguji perilaku constraint melalui jalur aplikasi. Constraint wajib selesai sebelum booking dipakai pilot.
 - 1.7 tidak boleh menjadi satu-satunya pertahanan terhadap bentrok atau input berbahaya.
 - Link WhatsApp untuk konfirmasi manual adalah tindakan pemilik, bukan integrasi API otomatis.
 - Jangan meminta keluhan kulit, alergi, atau data kesehatan pada form publik. Form publik tetap lima field sesuai PRD.
