@@ -64,7 +64,10 @@ Checklist ini digunakan bersama PRD, `AGENTS.md`, task terkait, laporan agent, d
 - [ ] `app_public` tidak memiliki privilege tabel apa pun; hanya USAGE pada schema booking dan EXECUTE tiga fungsi D-02.
 - [ ] `app_public` tidak punya USAGE/SELECT/INSERT/UPDATE/DELETE atau privilege lain pada `records`.
 - [ ] `app_public` gagal saat SELECT/INSERT langsung ke tabel apa pun.
-- [ ] Fungsi SECURITY DEFINER dimiliki role NOLOGIN berhak minimum, search_path dikunci, objek dikualifikasi schema, REVOKE PUBLIC, EXECUTE terbatas.
+- [ ] Fungsi D-02 dimiliki `booking_public_fn_owner` (NOLOGIN, bukan superuser) dengan hanya SELECT tabel konfigurasi dan SELECT/INSERT bookings; tanpa UPDATE/DELETE.
+- [ ] Fungsi D-03 dimiliki `booking_private_fn_owner` (NOLOGIN, bukan superuser) dengan hanya SELECT dan UPDATE kolom status bookings serta INSERT status_events.
+- [ ] Kedua owner fungsi tidak memiliki privilege records atau hak tabel/kolom di luar daftar; grant tabel/kolom dibuat T-005, bukan T-042/T-043.
+- [ ] Fungsi SECURITY DEFINER memakai search_path terkunci, objek dikualifikasi schema, REVOKE PUBLIC, EXECUTE terbatas.
 - [ ] `app_private` memiliki SELECT seluruh booking, INSERT/UPDATE tanpa DELETE pada tabel konfigurasi D-03, tanpa DML langsung pada bookings; status melalui fungsi set_booking_status.
 - [ ] Transisi status dicatat pada booking.status_events sesuai aturan D-03.
 - [ ] Tidak ada privilege berlebih yang diwariskan melalui role membership/default privileges.
