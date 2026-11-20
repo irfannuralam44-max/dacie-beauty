@@ -9,7 +9,7 @@
 
 ## 1. Ringkasan perubahan
 
-Temuan audit DOC-008 diperbaiki tanpa mengubah keputusan D-01 sampai D-10, ruang lingkup MVP, urutan fase, atau aturan kerja agent. T-005 dipecah secara logis menjadi role/privilege (T-005), fungsi publik (T-042), dan fungsi status (T-043). Backlog kini berisi 43 task unik, tidak ada estimasi XL, dan dependensi diperbarui.
+Temuan audit DOC-008 diperbaiki tanpa mengubah keputusan D-01 sampai D-10, ruang lingkup MVP, urutan fase, atau aturan kerja agent. T-005 dipecah secara logis menjadi role/privilege (T-005), fungsi publik (T-042), dan fungsi status (T-043). Referensi task pada laporan historis DOC-008 juga diperjelas agar ownership SQL lama tidak terbaca sebagai instruksi aktif. Backlog kini berisi 43 task unik, tidak ada estimasi XL, dan dependensi diperbarui.
 
 Constraint exclusion anti-tabrakan dipindahkan menjadi tanggung jawab T-004 sehingga tersedia sebelum fungsi booking mengandalkannya. T-010 dan T-012 dibatasi pada lapisan aplikasi. Fixture WhatsApp harus valid menurut aturan produksi tanpa percabangan environment. Kepercayaan IP Cloudflare, pengujian spoofing, serta pilihan penyimpanan counter rate limit didokumentasikan. PRD, AGENTS, rencana fase, backlog, dan skill PostgreSQL diselaraskan.
 
@@ -24,9 +24,10 @@ Tidak ada kode aplikasi, SQL migration, konfigurasi runtime, Dockerfile, Compose
 | `docs/PRD.md` | Risiko D-01 ditulis sebagai residual risk; A-03/A-04 diperbarui; tes wajib 12.2 ditambah; audit dependency masuk 12.3; keberatan F-05 dicatat |
 | `AGENTS.md` | Pemetaan DOC-009; aturan fixture WhatsApp; cakupan test keamanan minimum 7.3 diperluas |
 | `skills/postgres-migrations-and-roles/SKILL.md` | Ownership T-005/T-042/T-043 dan urutan constraint T-004 ditegaskan |
+| `docs/reports/DOC-008-architect-decisions.md` | Referensi historis ownership task D-02/D-03 diperjelas sebagai superseded oleh DOC-009/T-042/T-043 |
 | `docs/reports/DOC-009-audit-fixes.md` | Laporan pekerjaan ini |
 
-Tidak ada perubahan terhadap file lain yang diperlukan untuk enam perbaikan ini.
+Dokumen lain dipertahankan karena tidak terdampak oleh tujuh perbaikan ini.
 
 ## 3. Daftar perbaikan F-01 sampai F-07
 
