@@ -79,7 +79,7 @@ Fase 3 — Hardening & release
   └─ T-037 pilot sintetis dan release sign-off
 ```
 
-Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data booking dari fase 1 dan tidak dimulai sebelum kontrak booking stabil. T-039 dapat dikerjakan setelah T-005; T-038 dikerjakan setelah T-008 untuk mengangkat risiko infrastruktur lebih awal. Fase 3 mengeraskan dan mengoperasikan hasil fase 1–2. Urutan fase tetap 0 → 1 → 2 → 3.
+Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data booking dari fase 1 dan tidak dimulai sebelum kontrak booking stabil. T-039 dapat dikerjakan setelah T-005 dan T-042; T-038 dikerjakan setelah T-008 untuk mengangkat risiko infrastruktur lebih awal. Fase 3 mengeraskan dan mengoperasikan hasil fase 1–2. Urutan fase tetap 0 → 1 → 2 → 3.
 
 
 
