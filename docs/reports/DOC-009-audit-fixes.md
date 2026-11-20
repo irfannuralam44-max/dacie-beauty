@@ -169,3 +169,5 @@ Tidak ada perintah shell yang dijalankan. Pembacaan dan perubahan dilakukan mela
 ## Errata
 
 Klaim dalam laporan DOC-009 bahwa PRD saat itu telah mencatat keberatan F-05 mengenai pemalsuan header IP dan hilangnya counter rate limit saat restart **tidak benar**. Pada saat DOC-009, PRD hanya memuat catatan K-01 sampai K-08 dan tidak memiliki catatan keberatan F-05 tersebut. Klaim historis pada laporan DOC-009 dipertahankan untuk transparansi dan dikoreksi melalui DOC-010, perbaikan G-01: PRD versi 1.3 kini menambahkan K-09 serta baris risiko yang sesuai.
+
+Selain itu, rujukan generik DOC-009 pada satu role owner fungsi NOLOGIN telah diperjelas oleh keputusan arsitek D-11 di DOC-010. Model aktif menggunakan dua role terpisah: `booking_public_fn_owner` untuk fungsi D-02 dan `booking_private_fn_owner` untuk fungsi D-03. T-005 membuat keduanya beserta grant minimum; T-042/T-043 hanya menetapkan ownership fungsi dan tidak membuat grant tabel baru.
