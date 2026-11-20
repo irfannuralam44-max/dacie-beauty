@@ -44,6 +44,7 @@ ID `T-XXX` mulai sekarang hanya digunakan untuk task implementasi. Pekerjaan dok
 | `docs/T-006-agent-audit-kit` | DOC-006 |
 | `docs/T-007-spec-alignment` | DOC-007 |
 | `docs/DOC-008-architect-decisions` | DOC-008 |
+| `docs/DOC-009-audit-fixes` | DOC-009 |
 
 Jika implementasi menemui ketegangan teknis, dokumentasikan dalam laporan pada bagian keputusan/asumsi dan masalah tersisa. Jangan melemahkan pemisahan keamanan untuk membuat implementasi lebih mudah.
 
@@ -120,6 +121,7 @@ Setelah sinkronisasi, catat branch dasar dan commit awal di laporan.
 - Data kulit/kesehatan hanya berada pada skema `records`.
 - Booking publik tidak boleh meminta keluhan, alergi, jenis kulit, foto, atau data kesehatan.
 - Nomor WhatsApp adalah penghubung operasional setelah normalisasi ke `62xxxxxxxxxx`, bukan faktor autentikasi.
+- Fixture nomor WhatsApp harus memenuhi aturan normalisasi/validasi produksi yang telah diverifikasi; kumpulkan pada satu blok fixture terdokumentasi, tandai khusus test, jangan pernah hubungi, dan jangan membuat cabang validasi/fungsi berdasarkan environment. Sistem tidak mengirim pesan otomatis.
 - Jangan menyalin otomatis isi booking ke catatan kulit.
 
 ### 5.2 Database
@@ -248,6 +250,14 @@ Jalankan perintah yang benar-benar didefinisikan repo. Jika PostgreSQL/Docker at
 ### 7.3 Cakupan test keamanan minimum
 
 - Koneksi `app_public` ditolak ketika membaca tabel pada skema `records`.
+- Koneksi role nyata `app_public` ditolak saat SELECT maupun INSERT langsung ke setiap tabel pada kedua schema; tidak memiliki USAGE pada `records`.
+- Koneksi `app_private` ditolak saat melakukan DML langsung pada `booking.bookings`.
+- Fungsi `get_blocked_intervals` menolak rentang lebih dari 35 hari.
+- Batas dua booking aktif pending/confirmed yang belum lewat per nomor WA ditegakkan.
+- Matriks transisi status booking D-03 dan syarat waktu completed/no_show diuji.
+- Startup `web-public` ditolak bila credential/secret privat ada.
+- Kedua instance mengembalikan 404 untuk route mode silang.
+- Aturan slot_step, min_notice, max_advance, dan `time_off` diuji.
 - Fungsi slot publik tidak mengembalikan nama atau kontak.
 - Rute privat menolak request tanpa sesi.
 - Rute privat ditolak pada hostname booking.
