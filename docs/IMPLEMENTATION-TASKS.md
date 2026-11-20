@@ -126,7 +126,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** L
 - **Tujuan:** membuat skema `booking` dan `records` serta sistem migrasi SQL berversi.
 - **Dependensi:** T-002, T-003.
-- **Scope:** pilih satu mekanisme migrasi ringan; buat schema terpisah; tabel booking sesuai PRD termasuk treatments, providers dengan priority/is_active, working_hours, time_off, satu-baris booking_rules, bookings dengan status pending/confirmed/cancelled/completed/no_show, dan status_events; tabel records sesuai PRD; constraint, index, foreign key yang tidak melanggar larangan FK lintas schema, timestamp; dokumentasikan cara apply dan status migrasi.
+- **Scope:** pilih satu mekanisme migrasi ringan; buat schema terpisah; tabel booking sesuai PRD termasuk treatments, providers dengan priority/is_active, working_hours, time_off, satu-baris booking_rules, bookings dengan status pending/confirmed/cancelled/completed/no_show, dan status_events; tabel records sesuai PRD; constraint dan index, termasuk exclusion constraint untuk menolak interval booking pending/confirmed yang beririsan pada provider yang sama; verifikasi ketersediaan `btree_gist` serta hak role migrasi untuk membuat extension; foreign key yang tidak melanggar larangan FK lintas schema, timestamp; dokumentasikan cara apply dan status migrasi.
 - **Di luar scope:** UI CRUD dan data pelanggan nyata.
 - **Kemungkinan file:** `db/migrations/*`, skrip migrasi, `docs/database/*`, integration tests.
 - **Acceptance criteria:**
@@ -134,7 +134,9 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Schema `booking` dan `records` terpisah.
   - [ ] Struktur tabel mencakup treatments, providers.priority/is_active, working_hours, time_off, booking_rules satu baris, bookings dengan status D-05, dan status_events tanpa FK lintas schema untuk actor_user_id.
   - [ ] Booking rules mendukung nilai awal D-06 dan dapat diperbarui dari area privat.
-  - [ ] Constraint dan index yang diperlukan didefinisikan melalui migrasi.
+  - [ ] Constraint dan index yang diperlukan didefinisikan melalui migrasi, termasuk exclusion constraint yang menolak dua baris pending/confirmed beririsan untuk provider yang sama.
+  - [ ] Ketersediaan `btree_gist` dan hak role migrasi untuk membuat extension diverifikasi; jika tidak tersedia, blocker/alternatif dicatat tanpa melemahkan constraint.
+  - [ ] Integration test PostgreSQL membuktikan database menolak dua baris pending/confirmed yang beririsan pada provider yang sama.
   - [ ] Migrasi yang sudah diterapkan tidak diedit diam-diam; perubahan dibuat sebagai migrasi baru.
   - [ ] Tidak ada data pribadi nyata dalam seed/fixture.
 - **Tes:** apply migrasi pada PostgreSQL kosong; apply ulang sesuai perilaku tool; integration test constraint; dokumentasikan perintah aktual.
@@ -144,27 +146,60 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 
 - **Repo:** sama.
 - **Branch:** `agent/T-005-db-roles`
-- **Estimasi:** XL
-- **Tujuan:** menerapkan kontrak privilege database D-02 dan D-03 secara persis.
+- **Estimasi:** M
+- **Tujuan:** membuat role database dan menerapkan privilege minimum D-02/D-03 tanpa mengimplementasikan fungsi.
 - **Dependensi:** T-004.
-- **Scope:** buat role runtime `app_public` dan `app_private`; role pemilik fungsi `booking_fn_owner` atau nama setara dengan atribut NOLOGIN dan hak minimum; tiga fungsi publik `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; fungsi privat `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)`; seluruh grant/revoke D-02/D-03; tabel `booking.status_events`; audit SECURITY DEFINER, search_path, object qualification, dan default privileges.
-- **Di luar scope:** UI booking, UI rekam kulit, dan logika UI pemilihan slot.
-- **Kemungkinan file:** migrasi role/grant, SQL functions, tabel status_events, integration tests, dokumentasi privilege.
+- **Scope:** role runtime `app_public` dan `app_private`; role pemilik fungsi `booking_fn_owner` atau nama setara dengan atribut NOLOGIN dan hak minimum; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
+- **Di luar scope:** seluruh pembuatan fungsi SQL, UI booking, UI rekam kulit, dan logika pemilihan slot.
+- **Kemungkinan file:** migrasi role/grant, integration tests, dokumentasi privilege.
 - **Acceptance criteria:**
-  - [ ] `app_public` hanya mendapat USAGE pada schema `booking` dan EXECUTE tiga fungsi D-02; tidak mendapat USAGE pada schema `records`.
+  - [ ] `app_public` hanya mendapat USAGE pada schema `booking`, tanpa USAGE pada schema `records`.
   - [ ] `app_public` tidak memiliki privilege tabel apa pun; SELECT dan INSERT langsung ke setiap tabel ditolak. UPDATE/DELETE juga tidak diberikan.
-  - [ ] `get_public_config` mengembalikan treatment aktif (id/nama/durasi/jeda), jam kerja provider aktif per hari tanpa nama provider, time_off, dan booking_rules.
-  - [ ] `get_blocked_intervals` hanya mengembalikan provider_id/starts_at/ends_at untuk pending/confirmed yang beririsan; rentang lebih dari 35 hari ditolak; tidak ada ID booking/nama/nomor/status.
-  - [ ] `create_booking` menormalisasi WA ulang, memvalidasi D-06, memilih provider D-04, menangani konkurensi, dan hanya mengembalikan kode hasil yang ditetapkan.
-  - [ ] Fungsi publik dan `set_booking_status` memakai SECURITY DEFINER, owner NOLOGIN khusus hak minimum (bukan superuser), search_path dikunci, objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya untuk role yang ditetapkan.
-  - [ ] `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada treatments, providers, working_hours, time_off, booking_rules; tanpa DML langsung pada bookings.
-  - [ ] `set_booking_status` hanya mengizinkan transisi D-03 dan menulis setiap transisi ke status_events; actor_user_id tidak memakai FK lintas schema.
-  - [ ] `app_private` memiliki DML yang diperlukan pada records tanpa DDL dan bukan pemilik objek.
+  - [ ] `app_private` memiliki SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada `treatments`, `providers`, `working_hours`, `time_off`, dan `booking_rules`; tanpa DML langsung pada `booking.bookings`.
+  - [ ] `app_private` memiliki DML yang diperlukan pada `records`, tanpa DDL dan bukan pemilik objek.
   - [ ] Role runtime bukan superuser; role pemilik fungsi bukan superuser dan NOLOGIN.
-- **Tes:** PostgreSQL integration tests menggunakan kredensial role sebenarnya; SELECT/INSERT langsung app_public ke seluruh tabel harus gagal; hanya tiga fungsi publik dapat dieksekusi; uji output function dan rentang 35 hari; uji status transition matrix dan audit event; `scripts/verify.sh`.
+  - [ ] Default privileges untuk tabel, sequence, dan fungsi baru ditetapkan/ditinjau agar tidak memberi hak berlebih.
+  - [ ] Tes memakai koneksi kredensial role nyata: SELECT dan INSERT langsung dari `app_public` ke setiap tabel ditolak; `app_public` tidak memiliki USAGE pada `records`; DML langsung `app_private` pada `booking.bookings` ditolak.
+- **Tes:** PostgreSQL integration tests memakai koneksi sebagai `app_public` dan `app_private`; periksa seluruh tabel pada kedua schema; verifikasi default privileges; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-005-db-roles.md`.
 
+## T-042 — Fungsi publik booking
 
+- **Repo:** sama.
+- **Branch:** `agent/T-042-public-booking-functions`
+- **Estimasi:** L
+- **Tujuan:** menyediakan satu-satunya implementasi SQL untuk tiga fungsi publik D-02.
+- **Dependensi:** T-004, T-005.
+- **Scope:** implementasi `booking.get_public_config()`, `booking.get_blocked_intervals(p_from,p_to)`, dan `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; seluruh acceptance criteria D-02 yang sebelumnya tercampur di T-005; SECURITY DEFINER, owner NOLOGIN, hak minimum, search_path terkunci, objek schema-qualified, REVOKE ALL FROM PUBLIC, GRANT EXECUTE hanya kepada `app_public`, validasi argumen dan output; validasi D-06, normalisasi WA, provider auto-assign D-04, dan atomicity sesuai keputusan arsitektur.
+- **Di luar scope:** repository/route handler Next.js, UI, serta fungsi `booking.set_booking_status`.
+- **Kemungkinan file:** SQL migrations untuk fungsi, integration tests PostgreSQL, dokumentasi kontrak output.
+- **Acceptance criteria:**
+  - [ ] `get_public_config()` hanya mengembalikan treatment aktif (id/nama/durasi/jeda), jam kerja provider aktif per hari tanpa nama provider, `time_off`, dan `booking_rules`.
+  - [ ] `get_blocked_intervals(p_from,p_to)` hanya mengembalikan `provider_id/starts_at/ends_at` untuk booking pending/confirmed yang beririsan; rentang lebih dari 35 hari ditolak; tidak ada ID booking/nama/nomor/status.
+  - [ ] `create_booking(...)` memvalidasi D-06, menormalisasi WhatsApp, memilih provider menurut D-04, menulis secara atomik, dan hanya mengembalikan `created`, `slot_taken`, `invalid`, atau `limit_reached`.
+  - [ ] Ketiga fungsi memakai SECURITY DEFINER dengan owner NOLOGIN khusus berhak minimum (bukan superuser), search_path terkunci, objek dikualifikasi schema, REVOKE ALL FROM PUBLIC, dan EXECUTE hanya untuk `app_public`.
+  - [ ] Fungsi tidak mengandalkan SELECT/INSERT/UPDATE/DELETE langsung dari role `app_public`.
+- **Tes:** integration tests output minimum, batas rentang 35 hari, validasi D-06, provider auto-assign, atomicity dan privilege EXECUTE; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-042-public-booking-functions.md`.
+
+## T-043 — Fungsi status booking
+
+- **Repo:** sama.
+- **Branch:** `agent/T-043-booking-status-function`
+- **Estimasi:** M
+- **Tujuan:** menyediakan transisi status booking yang terkontrol dan tercatat.
+- **Dependensi:** T-005.
+- **Scope:** implementasi SQL `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)`; tabel `booking.status_events` bila belum dibuat di T-004; matriks transisi D-03; SECURITY DEFINER dan grant EXECUTE hanya kepada `app_private`.
+- **Di luar scope:** perubahan status melalui DML langsung pada tabel `booking.bookings` dan UI privat.
+- **Kemungkinan file:** SQL migration fungsi/status_events, integration tests, dokumentasi matriks transisi.
+- **Acceptance criteria:**
+  - [ ] Fungsi menggunakan owner NOLOGIN khusus hak minimum, bukan superuser; search_path dikunci; objek dikualifikasi schema; REVOKE ALL FROM PUBLIC; EXECUTE hanya untuk `app_private`.
+  - [ ] Transisi pending → confirmed/cancelled dan confirmed → cancelled/completed/no_show diterima.
+  - [ ] completed/no_show hanya dapat ditetapkan jika `starts_at` sudah lewat.
+  - [ ] Setiap transisi dicatat ke `booking.status_events` dengan booking_id, status asal/tujuan, actor_user_id, dan timestamp; actor_user_id tidak memakai FK lintas schema.
+  - [ ] `app_private` tidak memperoleh DML langsung pada `booking.bookings`.
+- **Tes:** PostgreSQL integration tests untuk setiap transisi valid/tidak valid, kondisi waktu, audit event, dan privilege EXECUTE; `scripts/verify.sh`.
+- **Laporan:** `docs/reports/T-043-booking-status-function.md`.
 
 ## T-006 — Lapisan data access dan transaksi
 
@@ -227,7 +262,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** integration security tests; `scripts/verify.sh`.
 - **Laporan:** `docs/reports/T-008-foundation-security-tests.md`.
 
-**Gerbang fase 0:** T-001 sampai T-008 serta T-038 dan T-039 selesai, merged, dan lolos audit; database privilege separation terbukti; spike dua instance/Tunnel/Access dilakukan pada mini PC; dataset sintetis tersedia. T-038 bergantung pada T-008; T-039 bergantung pada T-005.
+**Gerbang fase 0:** T-001 sampai T-008 serta T-038 dan T-039 selesai, merged, dan lolos audit; database privilege separation terbukti; spike dua instance/Tunnel/Access dilakukan pada mini PC; dataset sintetis tersedia. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042.
 
 ---
 
@@ -257,14 +292,15 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Branch:** `agent/T-039-synthetic-seeder`
 - **Estimasi:** M
 - **Tujuan:** menyediakan dataset sintetis konsisten untuk semua unit/integration/E2E tests.
-- **Dependensi:** T-005 (dan schema/migration T-004).
-- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan nomor sentinel test-only `620000000000`, `620000000001`, dan seterusnya yang jelas tidak valid untuk pelanggan nyata; pastikan sentinel hanya diterima dalam environment test; data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
+- **Dependensi:** T-005 dan T-042.
+- **Scope:** seeder treatment, provider, jam kerja, dan pelanggan fiktif; seluruh nama pelanggan diawali `Contoh`; gunakan fixture nomor seluler Indonesia yang memenuhi aturan normalisasi/validasi produksi yang telah diverifikasi; kumpulkan seluruh nomor fixture dalam satu blok data terdokumentasi sebagai nomor khusus test, tidak pernah dihubungi; tidak boleh ada perilaku fungsi atau validasi yang bergantung pada environment; data records sintetis dengan consent fixture yang eksplisit; idempotensi/cleanup aman untuk database test.
 - **Di luar scope:** data pelanggan asli, nomor WA yang dapat dihubungi, seeding production, isi catatan sensitif nyata.
 - **Kemungkinan file:** `db/seed/*`, test fixtures, `tests/fixtures/*`, dokumentasi seeder.
 - **Acceptance criteria:**
   - [ ] Seeder mengisi treatment, provider, jam kerja, dan customer fiktif.
   - [ ] Semua nama customer diawali `Contoh`.
-  - [ ] Nomor WhatsApp seed jelas bukan nomor pelanggan/nomor yang dapat dihubungi dan hanya digunakan dalam test.
+  - [ ] Nomor fixture memenuhi aturan format/normalisasi produksi yang telah diverifikasi, disimpan pada satu blok fixture terdokumentasi sebagai nomor khusus test, dan tidak pernah dihubungi; sistem tidak mengirim pesan otomatis.
+  - [ ] Fungsi dan validasi produksi tidak memiliki cabang atau pengecualian berdasarkan environment untuk nomor fixture.
   - [ ] Seeder dapat dijalankan berulang tanpa membuat duplikasi atau merusak data lain.
   - [ ] Semua E2E/integration tests menggunakan dataset seeder/fixture sintetis ini.
   - [ ] Seeder tidak dijalankan otomatis pada production.
@@ -293,23 +329,22 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** unit tests untuk validasi status/transisi dan aturan waktu.
 - **Laporan:** `docs/reports/T-009-booking-contract.md`.
 
-## T-010 — Implementasi get_public_config publik
+## T-010 — Repository dan route konfigurasi booking publik
 
 - **Repo:** sama.
 - **Branch:** `agent/T-010-public-booking-config`
 - **Estimasi:** M
-- **Tujuan:** mengimplementasikan fungsi `booking.get_public_config()` sebagai kontrak baca konfigurasi publik yang terbatas.
-- **Dependensi:** T-005, T-006, T-009.
-- **Scope:** implementasi `booking.get_public_config()` sesuai D-02; treatment aktif (id, nama, durasi menit, jeda menit); jam kerja per provider aktif per hari (provider_id, hari, mulai, selesai, tanpa nama provider); pengecualian time_off; booking_rules; SECURITY DEFINER dengan owner/privilege/search_path sesuai T-005. `app_public` tetap tanpa privilege tabel.
-- **Di luar scope:** halaman admin untuk mengubah konfigurasi.
-- **Kemungkinan file:** SQL migration, server repository, route handler, integration tests.
+- **Tujuan:** menyediakan lapisan aplikasi untuk membaca konfigurasi publik melalui fungsi database yang sudah disediakan T-042.
+- **Dependensi:** T-006, T-009, T-042.
+- **Scope:** server repository, tipe output, dan route handler yang memanggil `booking.get_public_config()` melalui koneksi `app_public`; pemetaan hasil ke kontrak aplikasi dan tes bentuk output.
+- **Di luar scope:** pembuatan atau perubahan SQL fungsi, grant database, serta halaman admin.
+- **Kemungkinan file:** server repository, domain types, route handler, application-level tests.
 - **Acceptance criteria:**
-  - [ ] Fungsi mengembalikan semua field D-02 dan tidak menyertakan nama provider atau data booking/customer.
-  - [ ] Tidak ada nama pelanggan, nomor WA, atau data records pada hasil.
-  - [ ] Koneksi menggunakan `app_public`.
-  - [ ] Tidak ada grant SELECT luas pada tabel operasional.
-  - [ ] `app_public` hanya dapat EXECUTE fungsi ini dan tidak dapat SELECT tabel konfigurasi.
-- **Tes:** integration test bentuk output dan privilege; verify.
+  - [ ] Repository memanggil `get_public_config()` melalui `app_public`; tidak membaca tabel konfigurasi secara langsung.
+  - [ ] Tipe aplikasi mencerminkan field D-02 dan tidak menyertakan nama provider atau data booking/customer.
+  - [ ] Route handler mengembalikan bentuk output aman dan tidak menyertakan nama pelanggan, nomor WA, atau data records.
+  - [ ] Tidak ada SQL function atau migration untuk fungsi publik dibuat ulang pada task ini.
+- **Tes:** unit/integration test bentuk output repository dan route; verifikasi role yang digunakan; verify.
 - **Laporan:** `docs/reports/T-010-public-booking-config.md`.
 
 ## T-011 — Mesin kalkulasi slot server-side
@@ -318,7 +353,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Branch:** `agent/T-011-slot-engine`
 - **Estimasi:** L
 - **Tujuan:** menghitung slot yang tersedia berdasarkan aturan operasional.
-- **Dependensi:** T-009, T-010.
+- **Dependensi:** T-009, T-010, T-042.
 - **Scope:** kalkulasi slot server-side memakai `get_public_config()` dan `get_blocked_intervals(p_from,p_to)`; rentang query interval terpakai maksimal 35 hari; Asia/Jakarta; jam kerja; durasi/jeda; time_off; aturan slot_step/min_notice/max_advance; interval terpakai adalah [mulai, mulai + durasi + jeda); tampilkan slot jika minimal satu provider aktif kosong. Provider final dipilih di create_booking.
 - **Di luar scope:** UI booking dan notifikasi.
 - **Kemungkinan file:** domain service slot, query/function DB, unit/integration tests.
@@ -333,27 +368,25 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Tes:** unit tests boundary waktu, DST tidak relevan untuk Asia/Jakarta tetapi offset harus eksplisit; integration test dengan booking sintetis.
 - **Laporan:** `docs/reports/T-011-slot-engine.md`.
 
-## T-012 — Pembuatan booking dan collision prevention
+## T-012 — Lapisan aplikasi pembuatan booking
 
 - **Repo:** sama.
 - **Branch:** `agent/T-012-booking-create`
 - **Estimasi:** L
-- **Tujuan:** menyimpan booking secara aman dan mencegah double booking.
-- **Dependensi:** T-005, T-006, T-009, T-011.
-- **Scope:** pembuatan booking hanya melalui `booking.create_booking(p_name,p_wa,p_treatment_id,p_starts_at)`; normalisasi ulang WA; validasi aturan D-06; provider otomatis berdasarkan priority; constraint database untuk mencegah overlap pada provider dan rentang (misalnya exclusion constraint); penanganan request bersamaan; response hanya kode hasil yang ditentukan. Ketersediaan btree_gist dan hak membuat extension diverifikasi saat discovery, tidak diasumsikan.
-- **Di luar scope:** integrasi WhatsApp API atau konfirmasi otomatis.
-- **Kemungkinan file:** booking service/repository, route handler, SQL migration tambahan, integration tests.
+- **Tujuan:** menerima dan memvalidasi permintaan booking pada lapisan aplikasi serta memetakan hasil fungsi database ke respons aman.
+- **Dependensi:** T-006, T-009, T-011, T-042.
+- **Scope:** validasi input server-side; pemanggilan `booking.create_booking(...)` melalui `app_public`; pemetaan kode hasil `created`, `slot_taken`, `invalid`, `limit_reached` ke respons publik aman; tes jalur aplikasi termasuk request bersamaan.
+- **Di luar scope:** implementasi SQL fungsi publik, pembuatan constraint database, dan perubahan schema/extension.
+- **Kemungkinan file:** booking application service/repository, validation schema, route handler, integration/E2E tests.
 - **Acceptance criteria:**
-  - [ ] Server memvalidasi ulang seluruh field.
+  - [ ] Server memvalidasi seluruh field dan menggunakan aturan normalisasi WhatsApp yang sama dengan fungsi database.
   - [ ] Request memakai role `app_public` dan hanya memanggil fungsi `create_booking`; tidak ada INSERT langsung ke tabel booking.
-  - [ ] Batas maksimal dua booking aktif pending/confirmed dan belum lewat per WA ditegakkan di fungsi/database.
-  - [ ] Aturan langkah 30 menit, minimal 3 jam, maksimal 30 hari, dan pending tanpa expiry otomatis ditegakkan.
-  - [ ] Constraint database mencegah overlap pada provider/rentang; dua request bersamaan untuk slot sama tidak menghasilkan dua booking aktif yang bentrok.
-  - [ ] Nomor WA dinormalisasi dengan satu aturan konsisten.
-  - [ ] Maksimal dua booking aktif pending/confirmed yang belum lewat per WA diterapkan atomik.
-  - [ ] Fungsi hanya mengembalikan created, slot_taken, invalid, atau limit_reached.
-  - [ ] Response tidak mengungkap detail booking pihak lain.
-- **Tes:** integration test concurrency dan invalid input pada PostgreSQL; verify.
+  - [ ] Batas maksimal dua booking aktif pending/confirmed dan belum lewat per WA ditegakkan oleh fungsi database; lapisan aplikasi memetakan `limit_reached` ke respons aman.
+  - [ ] Aturan langkah 30 menit, minimal 3 jam, dan maksimal 30 hari divalidasi server/database; pending tidak kedaluwarsa otomatis.
+  - [ ] Uji melalui jalur aplikasi membuktikan dua request bersamaan untuk slot/provider yang sama tidak menghasilkan dua booking aktif yang bertabrakan; constraint database dari T-004 menjadi pertahanan terakhir.
+  - [ ] Respons tidak mengungkap detail booking pihak lain.
+  - [ ] Tidak ada SQL function, migration constraint, atau extension setup yang dibuat ulang pada task ini.
+- **Tes:** integration/E2E tests jalur aplikasi untuk input valid/tidak valid, batas dua booking aktif per WA, pemetaan kode hasil, dan konkurensi; verify.
 - **Laporan:** `docs/reports/T-012-booking-create.md`.
 
 ## T-013 — UI halaman booking Bahasa Indonesia
@@ -385,11 +418,14 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** mengurangi spam dan penyalahgunaan form booking.
 - **Dependensi:** T-012, T-013.
-- **Scope:** rate limiting yang sesuai arsitektur; validasi format WA; CAPTCHA gratis jika batas dan ketentuan sudah diverifikasi; error handling dan logging tanpa PII.
+- **Scope:** rate limiting yang sesuai arsitektur; validasi format WA; CAPTCHA gratis jika batas dan ketentuan sudah diverifikasi; error handling dan logging tanpa PII. Alamat IP klien hanya dipercaya dari header yang ditetapkan Cloudflare dan hanya bila request dipastikan datang melalui Cloudflare Tunnel; header serupa yang dikirim klien langsung tidak dipercaya. Tentukan tempat penyimpanan hitungan rate limit (memori proses akan hilang saat restart) dan catat pilihan serta dampaknya di laporan.
 - **Di luar scope:** layanan CAPTCHA berbayar atau WhatsApp API.
 - **Kemungkinan file:** middleware/route protection, validation schema, config, tests, docs.
 - **Acceptance criteria:**
   - [ ] Rate limit berlaku di server dan memiliki perilaku saat limit terlampaui.
+  - [ ] IP klien diambil hanya dari header resmi yang ditetapkan Cloudflare ketika request telah diverifikasi datang melalui Tunnel; header spoof dari koneksi langsung diabaikan.
+  - [ ] Tes memalsukan header IP pada request langsung dan membuktikan nilai tersebut tidak dipercaya; tes jalur Tunnel membuktikan sumber IP tepercaya dipakai.
+  - [ ] Tempat penyimpanan counter dipilih dan trade-off kehilangan counter saat restart dicatat di laporan.
   - [ ] Validasi WA konsisten dengan normalisasi database.
   - [ ] Secret CAPTCHA (jika digunakan) hanya server-side.
   - [ ] CAPTCHA tidak diaktifkan dengan konfigurasi yang belum diverifikasi.
@@ -469,7 +505,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** melindungi sesi autentikasi dan mengurangi brute force.
 - **Dependensi:** T-017.
-- **Scope:** session expiry; invalidation/logout; cookie Secure, HttpOnly, SameSite; CSRF protection sesuai mekanisme; rate limit login; rotasi session ID setelah login.
+- **Scope:** session expiry; invalidation/logout; cookie Secure, HttpOnly, SameSite; CSRF protection sesuai mekanisme; rate limit login; rotasi session ID setelah login; sumber IP hanya dipercaya dari header yang ditetapkan Cloudflare jika request terverifikasi melalui Tunnel, bukan dari header yang dikirim klien langsung.
 - **Di luar scope:** 2FA.
 - **Kemungkinan file:** session module, middleware, auth routes, tests, docs.
 - **Acceptance criteria:**
@@ -477,6 +513,8 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Sesi memiliki masa berlaku dan dapat diakhiri.
   - [ ] Session identifier dirotasi setelah autentikasi.
   - [ ] Percobaan login dibatasi.
+  - [ ] IP untuk pembatasan login hanya diambil dari header resmi Cloudflare saat request terbukti melalui Tunnel; header spoof dari koneksi langsung tidak dipercaya.
+  - [ ] Tes pemalsuan header membuktikan koneksi langsung tidak dapat memilih IP yang dipakai untuk rate limit.
   - [ ] Mutasi state terlindungi dari CSRF sesuai pola framework.
 - **Tes:** integration tests cookie/session/logout/rate limit/CSRF; verify.
 - **Laporan:** `docs/reports/T-018-session-security.md`.
@@ -604,7 +642,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Branch:** `agent/T-025-booking-customer-link`
 - **Estimasi:** L
 - **Tujuan:** menghubungkan alur booking ke proses kerja manual pemilik.
-- **Dependensi:** T-020, T-021, T-024.
+- **Dependensi:** T-020, T-021, T-024, T-043.
 - **Scope:** tombol konfirmasi manual memanggil `booking.set_booking_status(p_booking_id,p_new_status,p_actor_user_id)` melalui app_private; link WhatsApp `wa.me` dengan template yang dapat diedit; buka profil berdasarkan WA; jika belum ada, buat profil identitas dasar saja. Pengisian data kulit/kunjungan tetap melewati consent gate T-021/T-022.
 - **Di luar scope:** WhatsApp API, pengiriman otomatis, auto-merge profil.
 - **Kemungkinan file:** booking actions, customer matching service, WhatsApp link helper, UI, tests.
@@ -740,7 +778,7 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Estimasi:** M
 - **Tujuan:** menghubungkan hostname publik dan privat ke service yang tepat tanpa port forwarding.
 - **Dependensi:** T-016, T-030.
-- **Scope:** konfigurasi Tunnel yang mengarahkan `booking.<domain>` ke service `web-public` dan `rekam.<domain>` ke service `web-private`; keduanya dua instance dari satu codebase dan satu image Docker dengan APP_MODE berbeda; host guard aplikasi membatasi route pada masing-masing mode; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini. Jangan membuat fork atau codebase aplikasi terpisah.
+- **Scope:** konfigurasi Tunnel yang mengarahkan `booking.<domain>` ke service `web-public` dan `rekam.<domain>` ke service `web-private`; keduanya dua instance dari satu codebase dan satu image Docker dengan APP_MODE berbeda; host guard aplikasi membatasi route pada masing-masing mode; dokumentasi DNS/Tunnel; verifikasi dokumentasi resmi terkini; dokumentasikan validasi bahwa request benar-benar melewati Tunnel sebelum mempercayai header IP klien Cloudflare. Header IP yang dikirim klien langsung tidak boleh dipercaya. Jangan membuat fork atau codebase aplikasi terpisah.
 - **Di luar scope:** menganggap Tunnel sebagai autentikasi aplikasi.
 - **Kemungkinan file:** deployment docs dan konfigurasi contoh tanpa token.
 - **Acceptance criteria:**
@@ -751,6 +789,8 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
   - [ ] Hostname booking hanya menyajikan halaman/endpoint publik.
   - [ ] Hostname rekam menuju boundary privat.
   - [ ] Tidak ada port router yang diekspos.
+  - [ ] Konfigurasi/prosedur membuktikan header IP Cloudflare hanya dipercaya untuk request yang masuk melalui Tunnel; header spoof dari koneksi langsung ditolak/diabaikan.
+  - [ ] Ada tes negatif pemalsuan header IP dari jalur langsung.
   - [ ] Pengujian memastikan route privat tetap ditolak pada hostname publik.
 - **Tes:** smoke test dari jaringan eksternal; host routing tests; audit secret.
 - **Laporan:** `docs/reports/T-031-cloudflare-tunnel.md`.
@@ -918,11 +958,11 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 
 | Fase | Rentang task | Jumlah |
 |---|---|---:|
-| 0 — Foundation | T-001–T-008, T-038–T-039 | 10 |
+| 0 — Foundation | T-001–T-008, T-038–T-039, T-042–T-043 | 12 |
 | 1 — Booking publik | T-009–T-015 | 7 |
 | 2 — Rekam kulit privat | T-016–T-028 | 13 |
 | 3 — Hardening & release | T-029–T-037, T-040–T-041 | 11 |
-| **Total** | **T-001–T-041** | **41** |
+| **Total** | **T-001–T-043** | **43** |
 
 ## Aturan perubahan backlog
 
