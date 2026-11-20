@@ -147,10 +147,10 @@ Semua task fase 0 harus selesai dan lolos audit sebelum fase 1 dimulai.
 - **Repo:** sama.
 - **Branch:** `agent/T-005-db-roles`
 - **Estimasi:** M
-- **Tujuan:** membuat role database dan menerapkan privilege minimum D-02/D-03 tanpa mengimplementasikan fungsi.
+- **Tujuan:** membuat role database dan menerapkan privilege minimum D-02/D-03.
 - **Dependensi:** T-004.
 - **Scope:** role runtime `app_public` dan `app_private`; role pemilik fungsi `booking_fn_owner` atau nama setara dengan atribut NOLOGIN dan hak minimum; grant/revoke pada schema dan tabel; default privileges untuk tabel, sequence, dan fungsi; hak role migrasi yang diperlukan; tes privilege dengan koneksi role nyata.
-- **Di luar scope:** seluruh pembuatan fungsi SQL, UI booking, UI rekam kulit, dan logika pemilihan slot.
+- **Di luar scope:** UI booking, UI rekam kulit, dan logika pemilihan slot.
 - **Kemungkinan file:** migrasi role/grant, integration tests, dokumentasi privilege.
 - **Acceptance criteria:**
   - [ ] `app_public` hanya mendapat USAGE pada schema `booking`, tanpa USAGE pada schema `records`.
