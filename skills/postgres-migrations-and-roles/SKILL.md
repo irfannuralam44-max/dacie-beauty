@@ -10,7 +10,7 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 
 - Skema `booking`: data booking operasional.
 - Skema `records`: data kulit/kesehatan dan akun internal.
-- `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`.
+- `app_public`: tidak memiliki privilege tabel apa pun; hanya USAGE pada schema `booking`, EXECUTE pada `get_public_config`, `get_blocked_intervals`, `create_booking`, tanpa USAGE pada `records`. Role/grant dikerjakan terpisah dari SQL fungsi: T-005 mengelola role dan privilege; T-042 satu-satunya pemilik SQL tiga fungsi publik.
 - `app_private`: SELECT seluruh tabel booking; INSERT/UPDATE tanpa DELETE pada tabel konfigurasi `treatments`, `providers`, `working_hours`, `time_off`, `booking_rules`; tanpa DML langsung pada `bookings`; status hanya melalui `set_booking_status`; DML yang diperlukan pada `records` tanpa DDL.
 - Jangan memakai superuser sebagai runtime role.
 - Jangan memberi hak ke `PUBLIC` tanpa alasan yang eksplisit dan ditinjau.
@@ -25,18 +25,21 @@ Wajib untuk setiap task yang menambah/mengubah tabel, kolom, index, constraint, 
 5. Tentukan owner objek, schema usage, table privileges, sequence privileges, function execute privileges, dan default privileges.
 6. Revoke hak yang tidak diperlukan dari `PUBLIC` dan role runtime.
 7. Berikan hanya grant yang diperlukan untuk use case task.
-8. Untuk fungsi publik:
+8. Pisahkan ownership task: T-005 hanya membuat role/grant/default privileges dan tes privilege; T-042 satu-satunya task yang membuat SQL `get_public_config`, `get_blocked_intervals`, dan `create_booking`; T-043 membuat SQL `set_booking_status`/status_events. T-010 dan T-012 hanya lapisan aplikasi dan tidak boleh menggandakan SQL.
+9. Untuk fungsi publik:
    - output minimum;
    - tidak mengembalikan nama/kontak;
    - validasi argumen dan rentang waktu;
    - pertimbangkan keamanan `search_path`;
    - jika `SECURITY DEFINER`, gunakan owner terbatas dan grant EXECUTE minimum.
-9. Tambahkan test privilege yang memakai koneksi sebagai role `app_public`, bukan sekadar memeriksa katalog dengan superuser.
-10. Jalankan migrasi dari database kosong dan, bila relevan, dari versi migrasi sebelumnya.
-11. Jalankan test integrasi terhadap PostgreSQL Docker dan `scripts/verify.sh`.
-12. Catat hasil serta risiko migrasi dalam laporan.
+10. Tambahkan test privilege yang memakai koneksi sebagai role `app_public`, bukan sekadar memeriksa katalog dengan superuser.
+11. Jalankan migrasi dari database kosong dan, bila relevan, dari versi migrasi sebelumnya.
+12. Jalankan test integrasi terhadap PostgreSQL Docker dan `scripts/verify.sh`.
+13. Catat hasil serta risiko migrasi dalam laporan.
 
 ## Pencegahan tabrakan booking
+
+Constraint exclusion untuk mencegah overlap harus dibuat pada migrasi schema T-004, sebelum fungsi `create_booking` T-042 dibuat. T-004 juga memverifikasi ketersediaan `btree_gist` dan hak role migrasi untuk membuat extension. T-042 boleh mengandalkan constraint yang sudah tersedia, tetapi tidak membuat ulang constraint tersebut; T-012 hanya menguji perilakunya melalui jalur aplikasi.
 
 Untuk booking, constraint database harus mencegah dua booking yang saling tumpang tindih untuk provider yang sama. Pilih mekanisme setelah memeriksa dukungan versi PostgreSQL yang dipakai dan kebutuhan extension. Ketersediaan `btree_gist` serta hak membuat extension perlu diverifikasi pada discovery; jangan menganggap extension tersedia. Jangan menganggap pemeriksaan availability di aplikasi cukup.
 
