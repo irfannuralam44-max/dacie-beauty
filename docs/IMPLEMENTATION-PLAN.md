@@ -109,7 +109,7 @@ Fase 1 dan 2 sama-sama bergantung pada fondasi fase 0. Fase 2 memanfaatkan data 
 
 - T-001 mendahului semua perubahan kode; versi Next.js stabil dan advisory resmi diverifikasi serta dicatat URL/tanggalnya.
 - T-002 dan T-003 mendahului pengujian integrasi yang membutuhkan dua mode.
-- T-004 mendahului T-005; grant dan function dibuat berdasarkan struktur tabel yang sudah ditetapkan.
+- T-004 mendahului T-005, T-042, dan T-043; T-042 bergantung pada T-004/T-005, sedangkan T-043 bergantung pada T-005. Exclusion constraint harus tersedia di T-004 sebelum create_booking T-042.
 - T-005 mendahului T-006, T-042, dan T-043; T-042 mendahului T-010/T-011/T-012 dan T-039.
 - T-008 adalah gerbang keamanan wajib. T-038 bergantung pada T-008; T-039 bergantung pada T-005 dan T-042.
 - T-005 hanya membuat role/grant/default privileges tanpa fungsi. T-042 adalah satu-satunya pemilik SQL untuk tiga fungsi publik D-02; T-043 adalah pemilik SQL untuk set_booking_status/status_events D-03. T-004 membuat exclusion constraint overlap sebelum T-042 memakai mekanisme tersebut.
