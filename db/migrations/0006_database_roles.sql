@@ -64,8 +64,7 @@ GRANT USAGE, SELECT ON SEQUENCE
   booking.treatments_id_seq,
   booking.providers_id_seq,
   booking.working_hours_id_seq,
-  booking.time_off_id_seq,
-  booking.status_events_id_seq
+  booking.time_off_id_seq
 TO app_private;
 GRANT USAGE, SELECT ON SEQUENCE booking.bookings_id_seq TO booking_public_fn_owner;
 GRANT USAGE, SELECT ON SEQUENCE booking.status_events_id_seq TO booking_private_fn_owner;
