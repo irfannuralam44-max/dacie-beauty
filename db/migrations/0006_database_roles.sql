@@ -32,10 +32,13 @@ DECLARE
   membership RECORD;
 BEGIN
   FOR membership IN
-    SELECT granted.rolname AS granted_role, member.rolname AS member_role
+    SELECT granted.rolname AS granted_role,
+           member.rolname AS member_role,
+           grantor.rolname AS grantor_role
       FROM pg_catalog.pg_auth_members AS m
       JOIN pg_catalog.pg_roles AS granted ON granted.oid = m.roleid
       JOIN pg_catalog.pg_roles AS member ON member.oid = m.member
+      JOIN pg_catalog.pg_roles AS grantor ON grantor.oid = m.grantor
      WHERE granted.rolname IN (
        'app_public', 'app_private',
        'booking_public_fn_owner', 'booking_private_fn_owner'
@@ -46,9 +49,10 @@ BEGIN
      )
   LOOP
     EXECUTE format(
-      'REVOKE %I FROM %I CASCADE',
+      'REVOKE %I FROM %I GRANTED BY %I CASCADE',
       membership.granted_role,
-      membership.member_role
+      membership.member_role,
+      membership.grantor_role
     );
   END LOOP;
 END
