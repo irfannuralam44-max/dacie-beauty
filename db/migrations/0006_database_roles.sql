@@ -57,17 +57,17 @@ TO app_private;
 
 -- app_private adalah satu-satunya role aplikasi dengan DML pada records.
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA records TO app_private;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA records TO app_private;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA records TO app_private;
 
 -- Sequence hanya diberikan sesuai jalur INSERT yang diizinkan.
-GRANT USAGE, SELECT ON SEQUENCE
+GRANT USAGE ON SEQUENCE
   booking.treatments_id_seq,
   booking.providers_id_seq,
   booking.working_hours_id_seq,
   booking.time_off_id_seq
 TO app_private;
-GRANT USAGE, SELECT ON SEQUENCE booking.bookings_id_seq TO booking_public_fn_owner;
-GRANT USAGE, SELECT ON SEQUENCE booking.status_events_id_seq TO booking_private_fn_owner;
+GRANT USAGE ON SEQUENCE booking.bookings_id_seq TO booking_public_fn_owner;
+GRANT USAGE ON SEQUENCE booking.status_events_id_seq TO booking_private_fn_owner;
 
 -- Owner fungsi publik: baca konfigurasi dan SELECT/INSERT bookings, tanpa UPDATE/DELETE.
 GRANT SELECT ON TABLE
