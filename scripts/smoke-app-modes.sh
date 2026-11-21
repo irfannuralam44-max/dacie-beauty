@@ -44,11 +44,10 @@ stop_server() {
 
 trap stop_server EXIT
 
-echo "=== Build without APP_MODE ==="
+echo "=== Build once without APP_MODE ==="
 env -u APP_MODE npm run build
 
-echo "=== Mode: public ==="
-APP_MODE=public npm run build
+echo "=== Run same build: APP_MODE=public ==="
 start_server public /tmp/dacie-smoke-public.log
 assert_status 200 http://localhost:3000/
 assert_status 200 http://localhost:3000/booking
@@ -56,8 +55,7 @@ assert_status 404 http://localhost:3000/rekam
 grep -q "Mode aplikasi: public" <(curl -s http://localhost:3000/)
 stop_server
 
-echo "=== Mode: private ==="
-APP_MODE=private npm run build
+echo "=== Run same build: APP_MODE=private ==="
 start_server private /tmp/dacie-smoke-private.log
 assert_status 200 http://localhost:3000/
 assert_status 200 http://localhost:3000/rekam
@@ -65,8 +63,7 @@ assert_status 404 http://localhost:3000/booking
 grep -q "Mode aplikasi: private" <(curl -s http://localhost:3000/)
 stop_server
 
-echo "=== Mode: invalid (must fail closed) ==="
-APP_MODE=invalid npm run build
+echo "=== Run same build: APP_MODE=invalid (must fail closed) ==="
 APP_MODE=invalid npm run start > /tmp/dacie-smoke-invalid.log 2>&1 &
 INVALID_PID=$!
 sleep 6

@@ -52,10 +52,8 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 | `npx next typegen` | Route types generated | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
 | `npm run typecheck` | Tanpa error | 0 |
-| `APP_MODE=public npm run build` | Build berhasil; route `/`, `/booking`, `/rekam` | 0 |
-| `APP_MODE=private npm run build` | Build berhasil; route `/`, `/booking`, `/rekam` | 0 |
-| `env -u APP_MODE npm run build` | Build berhasil tanpa APP_MODE; `/` menjadi dynamic (ƒ) | 0 |
-| `./scripts/smoke-app-modes.sh` | Build + runtime public/private/invalid lulus | 0 |
+| `env -u APP_MODE npm run build` | Build sekali tanpa APP_MODE berhasil; `/` menjadi dynamic (ƒ) | 0 |
+| `./scripts/smoke-app-modes.sh` | Build sekali tanpa APP_MODE, lalu hasil build yang sama dijalankan public, private, dan invalid; semua assertion lulus | 0 |
 | Runtime public: `/`, `/booking`, `/rekam` | 200, 200, 404 | 0 |
 | Runtime private: `/`, `/rekam`, `/booking` | 200, 200, 404 | 0 |
 | Runtime invalid: `/` | 500, log memuat error APP_MODE | 0 (proses gagal startup) |
@@ -72,7 +70,7 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 - [x] Aplikasi dapat di-install dari lockfile — dibuktikan dengan `npm ci` exit code 0.
 - [x] Perintah development dan build yang terdokumentasi berjalan — `npm run dev` tersedia; build public/private exit code 0.
 - [x] TypeScript dan lint aktif tanpa mematikan aturan secara global — `npm run lint` dan `npm run typecheck` exit code 0; `tsconfig.json` strict true.
-- [x] Kedua mode dapat dibangun dari codebase/image yang sama — build public dan private berhasil; Dockerfile satu image dengan `APP_MODE`.
+- [x] Kedua mode dapat dibangun dari codebase/image yang sama — satu build tanpa `APP_MODE` dijalankan dengan `APP_MODE=public` dan `APP_MODE=private`; smoke test membuktikan hasil build yang sama melayani kedua mode.
 - [x] Tidak ada rahasia atau file environment aktual yang dikomit — `.env` diabaikan; hanya `.env.example` dengan placeholder dummy; `git status` tidak memuat `.env`.
 - [x] Struktur awal tidak mengunci aplikasi pada vendor hosting tertentu — tidak ada konfigurasi Vercel/Netlify; Docker standalone.
 - [x] Versi Next.js stabil dan advisory resmi keamanan terbaru diverifikasi — Next.js 16.4.6; advisory November 2026 dan rilis 16.4.6 dicatat beserta URL dan tanggal pemeriksaan 2026-11-21.
@@ -98,8 +96,8 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
    - Pengujian: runtime invalid mengembalikan HTTP 500 dari instrumentation dan log memuat error; proxy juga fail-closed. Smoke script lulus.
 
 3. **Bukti pengujian kedua mode**
-   - Ditambahkan `scripts/smoke-app-modes.sh` yang membangun dan menjalankan mode public, private, dan invalid, lalu memeriksa status HTTP dan konten.
-   - Hasil: `ALL SMOKE CHECKS PASSED` (exit 0).
+   - Ditambahkan `scripts/smoke-app-modes.sh` yang membangun **sekali** tanpa `APP_MODE`, lalu menjalankan hasil build yang sama dengan `APP_MODE=public`, `APP_MODE=private`, dan `APP_MODE=invalid`, serta memeriksa status HTTP dan konten.
+   - Hasil: `ALL SMOKE CHECKS PASSED` (exit 0), membuktikan satu build yang sama melayani kedua mode.
 
 4. **Docker**
    - `Dockerfile` menggunakan satu image standalone; `CMD` memvalidasi `APP_MODE` sebelum menjalankan `node server.js`.
