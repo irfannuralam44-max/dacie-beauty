@@ -50,6 +50,7 @@ env -u APP_MODE npm run build
 echo "=== Run same build: APP_MODE=public ==="
 start_server public /tmp/dacie-smoke-public.log
 assert_status 200 http://localhost:3000/
+assert_status 200 http://localhost:3000/api/health
 assert_status 200 http://localhost:3000/booking
 assert_status 404 http://localhost:3000/rekam
 grep -q "Mode aplikasi: public" <(curl -s http://localhost:3000/)
@@ -58,6 +59,7 @@ stop_server
 echo "=== Run same build: APP_MODE=private ==="
 start_server private /tmp/dacie-smoke-private.log
 assert_status 200 http://localhost:3000/
+assert_status 200 http://localhost:3000/api/health
 assert_status 200 http://localhost:3000/rekam
 assert_status 404 http://localhost:3000/booking
 grep -q "Mode aplikasi: private" <(curl -s http://localhost:3000/)
