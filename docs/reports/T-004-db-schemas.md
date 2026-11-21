@@ -134,7 +134,7 @@ Kriteria yang diuji semua **PASS** dengan bukti tes integrasi terhadap PostgreSQ
 ```text
 Push: berhasil
 Branch: agent/T-004-db-schemas
-SHA: 7bda3d057b88a4ce6fe306a7d8a555cda7852db8
-Commit: docs(report): sinkronisasi bagian Git T-004 ke e1fd5d2
+SHA: dd87fddd5552aec3fb5a5c7404b0d129012f2339
+Commit: fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif
 Laporan: docs/reports/T-004-db-schemas.md
 ```
