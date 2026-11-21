@@ -20,7 +20,7 @@ Menambahkan migrasi `0006_database_roles.sql` untuk membuat role runtime `app_pu
 
 | File | Perubahan |
 |---|---|
-| `db/migrations/0006_database_roles.sql` | Membuat empat role; mengatur atribut keamanan; grant/revoke schema, tabel, kolom status, sequence; default privileges; revoke EXECUTE PUBLIC pada trigger function T-004 |
+| `db/migrations/0006_database_roles.sql` | Membuat atau menormalkan empat role; mencabut seluruh membership `pg_auth_members` yang menyentuh role T-005 (termasuk grantor berbeda dan membership turunan dengan `CASCADE`); grant/revoke schema, tabel, kolom status, sequence; default privileges; revoke EXECUTE PUBLIC pada trigger function T-004 |
 | `src/db/roles.test.ts` | Tes kredensial nyata app_public/app_private, batas kedua function owner, dan default privileges |
 | `docs/database/panduan-migrasi.md` | Dokumentasi role, credential handling, default privileges, dan cara menjalankan tes |
 | `docs/reports/T-005-db-roles.md` | Laporan task |
@@ -60,12 +60,13 @@ File `src/db/roles.test.ts` mencakup:
 2. Dengan `APP_PRIVATE_DATABASE_URL`, SELECT seluruh tabel booking berhasil; DML langsung pada bookings ditolak; lima tabel konfigurasi memiliki INSERT/UPDATE tanpa DELETE; seluruh tabel records memiliki DML.
 3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
 4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
+5. Membership tambahan diuji dengan sengaja menambahkan membership dua arah, membuktikan privilege efektif bocor sebelum migrasi, menjalankan ulang SQL migrasi terhadap role yang sudah ada dengan atribut permisif, lalu memastikan semua membership yang menyentuh empat role hilang dan atribut role kembali sesuai matriks.
 
 **Status eksekusi setelah audit:** Belum dijalankan ulang untuk revisi ini. Klaim hasil lama PostgreSQL 16/35 tes tidak dipakai sebagai bukti untuk commit terbaru. Agent lokal harus mencatat versi aktual dari `SHOW server_version`, jumlah tes yang benar-benar berjalan/skip, dan hasil setiap perintah. Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
 
 ## 7. Verifikasi ulang untuk commit audit
 
-Status sementara: **PENDING** sampai agent lokal menjalankan ulang migrasi 0001–0006 dan seluruh pemeriksaan pada commit terbaru. Catat versi PostgreSQL aktual, hasil migrasi awal dan re-apply, integration test (termasuk test membership), lint, dan typecheck secara terpisah. Pisahkan kegagalan baru dari kegagalan pre-existing yang dapat dibuktikan berasal dari baseline `main`.
+Status sementara: **PENDING** sampai agent lokal menjalankan ulang migrasi 0001–0006 dan seluruh pemeriksaan pada commit terbaru. Catat versi PostgreSQL aktual dari `SHOW server_version`, hasil migrasi awal dan re-apply, integration test (termasuk test membership/idempotensi), lint, dan typecheck secara terpisah. Pisahkan kegagalan baru dari kegagalan pre-existing yang dapat dibuktikan berasal dari baseline `main`. Tidak ada hasil PASS/FAIL baru yang diklaim oleh laporan ini.
 
 ## 8. Perintah verifikasi yang harus dijalankan
 
