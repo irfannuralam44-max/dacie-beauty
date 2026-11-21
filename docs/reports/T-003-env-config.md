@@ -33,7 +33,7 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_publi
 - SHA dasar: `44a38a90ca40683c58034761b9069f7f77479c55`
 - Working tree sebelum mulai: bersih (setelah sync fast-forward dari `origin/main`)
 - Fetch: `git fetch origin --prune` berhasil; `origin/main` = `44a38a90ca40683c58034761b9069f7f77479c55`
-- SHA commit implementasi: `ca1be35638c6e455f7fe4d39b9c1b07684ba97fa`
+- SHA commit implementasi: `f6cb1b220c4add27d15d82739fed6fe07c4832ca`
 - Docker Engine: `29.1.3`; Docker Compose: `2.40.3+ds1-0ubuntu1~24.04.1`
 - Node.js: `v24.22.2`
 - `scripts/verify.sh`: belum tersedia (scope T-007)
@@ -127,7 +127,8 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_publi
 ## Git
 
 - Branch: `agent/T-003-env-config`
-- SHA commit implementasi: `ca1be35638c6e455f7fe4d39b9c1b07684ba97fa`
-- Commit implementasi: `feat(env): centralize and validate server environment config`
+- SHA commit implementasi: `f6cb1b220c4add27d15d82739fed6fe07c4832ca`
+- Commit implementasi awal: `feat(env): centralize and validate server environment config` (`ca1be35638c6e455f7fe4d39b9c1b07684ba97fa`)
+- Commit perbaikan audit: `fix(env): enforce database role per app mode` (`f6cb1b220c4add27d15d82739fed6fe07c4832ca`)
 - SHA commit laporan: commit terakhir pada branch ini (lihat `git log -1`); nilai pasti diberikan pada pesan chat setelah push
 - Push: berhasil (branch `agent/T-003-env-config` ke origin)
