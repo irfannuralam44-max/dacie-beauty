@@ -67,7 +67,7 @@ Perintah apply dan status dokumentasikan di `docs/database/panduan-migrasi.md`.
 | `node scripts/migrate.mjs` (re-apply) | Semua dilewati (idempoten) | 0 |
 | `node scripts/migrate.mjs status` | 5 versi [TERAPKAN] | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
-| `npm run typecheck` | Tanpa error | 0 |
+| `npm run typecheck` | FAIL: `src/app/layout.tsx(20,50)` error TS2304 — `LayoutProps` tidak terdefinisi/diimpor. Masalah pre-existing pada base T-004, bukan regresi. | 1 |
 | `node --test "src/**/*.test.ts"` (DATABASE_URL disetel) | 31/31 lulus | 0 |
 | `node --test src/db/exclusion.test.ts` | 5/5 lulus | 0 |
 
@@ -137,7 +137,10 @@ Kriteria yang diuji semua **PASS** dengan bukti tes integrasi terhadap PostgreSQ
 ```text
 Push: berhasil
 Branch: agent/T-004-db-schemas
-SHA: 07a2e32ce1f4f0f1b68bf7ec3171f44871eeff5e
-Commit: fix(db): assertion lock pemicu dua akun aktif setelah commit c1 dan hasil c2
+SHA revisi tes: 07a2e32ce1f4f0f1b68bf7ec3171f44871eeff5e
+Commit revisi tes: fix(db): assertion lock pemicu dua akun aktif setelah commit c1 dan hasil c2
+SHA implementasi: dd87fddd5552aec3fb5a5c7404b0d129012f2339
+Commit implementasi: fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif
+SHA dokumentasi revisi: ditentukan saat handoff (jangan membuat siklus sinkronisasi SHA tanpa akhir)
 Laporan: docs/reports/T-004-db-schemas.md
 ```
