@@ -172,3 +172,59 @@ test('dua transaksi bersamaan paling banyak satu booking aktif yang berhasil', a
     await c.end();
   }
 });
+
+test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (t) => {
+  if (!butuhDb(t)) return;
+  const c = await connect();
+  try {
+    await c.query('DELETE FROM records.sessions');
+    await c.query('DELETE FROM records.audit_logs');
+    await c.query('DELETE FROM records.users');
+
+    // Satu akun aktif sudah ada; ruang tersisa untuk satu akun aktif tambahan.
+    await c.query(
+      "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Satu', 'user_satu', 'hash_satu', 'active')"
+    );
+
+    const c1 = await connect();
+    const c2 = await connect();
+    await c1.query("SET statement_timeout = '3s'");
+    await c2.query("SET statement_timeout = '3s'");
+    try {
+      await c1.query('BEGIN');
+      await c2.query('BEGIN');
+
+      const hasil1 = c1.query(
+        "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Dua', 'user_dua', 'hash_dua', 'active')"
+      );
+      const hasil2 = c2.query(
+        "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Tiga', 'user_tiga', 'hash_tiga', 'active')"
+      );
+      const hasil = await Promise.allSettled([hasil1, hasil2]);
+
+      let berhasil = 0;
+      for (const [klien, hasilKlien] of [[c1, hasil[0]], [c2, hasil[1]]] as const) {
+        if (hasilKlien.status === 'fulfilled') {
+          try {
+            await klien.query('COMMIT');
+            berhasil += 1;
+          } catch {
+            await klien.query('ROLLBACK').catch(() => {});
+          }
+        } else {
+          await klien.query('ROLLBACK').catch(() => {});
+        }
+      }
+
+      assert.strictEqual(berhasil, 1, 'paling banyak satu akun aktif tambahan boleh berhasil');
+    } finally {
+      await c1.end();
+      await c2.end();
+    }
+
+    const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
+    assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');
+  } finally {
+    await c.end();
+  }
+});

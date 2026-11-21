@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `9f731f2167d7eb0b79029d568676c570f718154b` |
-| Commit message | `feat(db): initial PostgreSQL schemas and versioned migrations` |
+| SHA commit implementasi | `f2e02b7b01ac8aeea645fd176f0ffb26807b5ad4` |
+| Commit message | `docs(report): catat status push T-004` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
@@ -59,28 +59,28 @@ Perintah apply dan status dokumentasikan di `docs/database/panduan-migrasi.md`.
 | `npm install --save-dev @types/pg` | Ditambah `@types/pg` 8.23.1 (MIT), 0 vuln | 0 |
 | `CREATE DATABASE dacie_t004` | Database uji kosong dibuat | 0 |
 | `CREATE EXTENSION IF NOT EXISTS btree_gist` | Berhasil (versi 1.7, skema public) | 0 |
-| `node scripts/migrate.mjs` (apply) | 4/4 migrasi diterapkan | 0 |
+| `node scripts/migrate.mjs` (apply) | 5/5 migrasi diterapkan | 0 |
 | `node scripts/migrate.mjs` (re-apply) | Semua dilewati (idempoten) | 0 |
-| `node scripts/migrate.mjs status` | 4 versi [TERAPKAN] | 0 |
+| `node scripts/migrate.mjs status` | 5 versi [TERAPKAN] | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
 | `npm run typecheck` | Tanpa error | 0 |
-| `node --test "src/**/*.test.ts"` (DATABASE_URL disetel) | 30/30 lulus | 0 |
-| `node --test src/db/exclusion.test.ts` | 4/4 lulus | 0 |
+| `node --test "src/**/*.test.ts"` (DATABASE_URL disetel) | 31/31 lulus | 0 |
+| `node --test src/db/exclusion.test.ts` | 5/5 lulus | 0 |
 
 `scripts/verify.sh`: **belum tersedia** (scope T-007), tidak dibuat pengganti agar tidak melanggar pembagian task. Verifikasi aktual dijalankan per perintah di atas.
 
 ## 6. Hasil pengujian PostgreSQL
 
-- Database `dacie_t004` kosong dibangun dari seluruh 4 migrasi secara berurutan.
-- `btree_gist` tersedia dan dapat dibuat oleh role migrasi (superuser development `dacie_dev`).
+- Database `dacie_t004` kosong dibangun dari seluruh 5 migrasi secara berurutan.
+- `btree_gist` tersedia dan dapat dibuat sebagai superuser development `dacie_dev` (verifikasi non-superuser ditunda ke T-005).
 - Skema `booking` dan `records` terbentuk; seluruh tabel, kolom, constraint, dan index sesuai spesifikasi.
 - `booking_rules` nilai awal: `slot_step_minutes=30`, `min_notice_hours=3`, `max_advance_days=30`, `max_active_per_wa=2`.
-- Exclusion constraint `bookings_no_overlap_ACTIVE` menggunakan gist `(provider_id WITH =, tstzrange(starts_at, ends_at) WITH &&)` WHERE status IN ('pending','confirmed').
-- Tes integrasi (`src/db/exclusion.test.ts`): 4/4 lulus, meliputi exclusion constraint menolak interval bertumpang tindih, status non-aktif tidak menghalangi, provider berbeda boleh, dan dua transaksi bersamaan menghasilkan paling banyak satu booking aktif yang berhasil.
+- Exclusion constraint `bookings_no_overlap_active` menggunakan gist `(provider_id WITH =, tstzrange(starts_at, ends_at) WITH &&)` WHERE status IN ('pending','confirmed').
+- Tes integrasi (`src/db/exclusion.test.ts`): 5/5 lulus, meliputi exclusion constraint menolak interval bertumpang tindih, status non-aktif tidak menghalangi, provider berbeda boleh, dua transaksi bersamaan menghasilkan paling banyak satu booking aktif, dan pemicu maksimal dua akun aktif aman terhadap konkuren.
 
 ## 7. Bukti ketersediaan `btree_gist` dan hak membuat extension
 
-Extension `btree_gist` versi 1.7 terpasang pada `postgres:17-alpine` dan berhasil dibuat dengan perintah `CREATE EXTENSION IF NOT EXISTS btree_gist;` sebagai role `dacie_dev` (superuser pada environment development). Role migrasi pada development mampu membuat extension. Hak pembuatan extension untuk role runtime (`app_public`/`app_private`) diatur pada T-005, bukan cakupan T-004.
+Extension `btree_gist` versi 1.7 terpasang pada `postgres:17-alpine` dan berhasil dibuat dengan perintah `CREATE EXTENSION IF NOT EXISTS btree_gist;` sebagai role `dacie_dev` (superuser pada environment development). **Catatan:** ketersediaan dan hak membuat extension diverifikasi hanya sebagai superuser development `dacie_dev`; verifikasi dengan role migrasi non-superuser yang representatif ditunda ke T-005 (pembuatan role dan privilege), bukan cakupan T-004. Hak pembuatan extension untuk role runtime (`app_public`/`app_private`) diatur pada T-005.
 
 ## 8. Acceptance criteria
 
@@ -88,11 +88,11 @@ Extension `btree_gist` versi 1.7 terpasang pada `postgres:17-alpine` dan berhasi
 |---|---|---|---|
 | 1 | Database kosong dapat dibangun melalui seluruh migrasi | PASS | `dacie_t004` dibangun dari 0 via `node scripts/migrate.mjs` (4/4 diterapkan) |
 | 2 | Kedua schema berhasil dibuat | PASS | `\dn`: `booking`, `records` |
-| 3 | Seluruh tabel dan kolom wajib tersedia | PASS | 14 tabel application + `booking.schema_migrations`; kolom sesuai `information_schema.columns` |
+| 3 | Seluruh tabel dan kolom wajib tersedia | PASS | 13 tabel application + 1 tabel pelacakan migrasi (`booking.schema_migrations`); kolom sesuai `information_schema.columns` |
 | 4 | Constraint dan index yang diwajibkan tersedia | PASS | PK, FK, UNIQUE, CHECK, exclusion constraint `bookings_no_overlap_active`, index pendukung |
 | 5 | Nilai awal `booking_rules` sesuai PRD | PASS | 30 / 3 / 30 / 2 |
 | 6 | Status booking hanya menerima nilai yang diizinkan | PASS | CHECK constraint; nilai `status_tidak_valid` ditolak (tes) |
-| 7 | Foreign key tidak melanggar larangan lintas skema | PASS | Semua FK dalam satu skema; `actor_user_id` integer tanpa FK; tidak ada FK `booking`<->`records` |
+| 7 | Foreign key tidak melanggar larangan lintas skema | PASS | Semua FK dalam satu skema; `actor_user_id` bigint tanpa FK; tidak ada FK `booking`<->`records` |
 | 8 | Nomor WhatsApp constraint format/keunikan | PASS | `^62[0-9]{9,13}$` pada `bookings.nomor_wa` dan `customers.nomor_wa` (UNIQUE) |
 | 9 | Exclusion constraint menolak dua booking aktif beririsan pada provider sama | PASS | Tes integrasi gagalkan insert pending yang bertumpang tindih (kode exclusion/23P01/40P01) |
 | 10 | Booking cancelled/completed/no_show tidak menghalangi interval baru | PASS | Tes insert cancelled/completed/no_show pada interval yang sama berhasil |
@@ -126,14 +126,14 @@ Kriteria yang diuji semua **PASS** dengan bukti tes integrasi terhadap PostgreSQ
 - Area sensitif: exclusion constraint `bookings_no_overlap_active` (`db/migrations/0004_constraints.sql`), extension `btree_gist`, tabel pelacakan `booking.schema_migrations`.
 - Berkas penting: `db/migrations/*.sql`, `scripts/migrate.mjs`, `src/db/exclusion.test.ts`, `docs/database/panduan-migrasi.md`.
 - Langkah reproduksi: buat database kosong, set `DATABASE_URL`, jalankan `node scripts/migrate.mjs`, lalu `node --test src/db/exclusion.test.ts`.
-- Perhatian khusus: laporan ini belum mengandung SHA commit akhir dan status push karena ditulis sebelum commit; akan diperbarui pada bagian Git setelah commit dan push.
+- Perhatian khusus: SHA commit akhir dan status push sudah dicatat pada bagian Metadata dan Git di bawah ini.
 
 ## 12. Git
 
 ```text
 Push: berhasil
 Branch: agent/T-004-db-schemas
-SHA: 9f731f2167d7eb0b79029d568676c570f718154b
-Commit: feat(db): initial PostgreSQL schemas and versioned migrations
+SHA: f2e02b7b01ac8aeea645fd176f0ffb26807b5ad4
+Commit: docs(report): catat status push T-004
 Laporan: docs/reports/T-004-db-schemas.md
 ```

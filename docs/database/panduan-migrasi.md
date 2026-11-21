@@ -72,7 +72,7 @@ Dokumen ini menjelaskan fondasi database PostgreSQL Dacie Beauty: skema `booking
 
 **CHECK:** `users.status` (active/inactive), `customers.nomor_wa` format `^62[0-9]{9,13}$`.
 
-**Pemicu (trigger):** `records.enforce_max_two_active_users()` mencegah lebih dari dua akun `users` dengan `status = 'active'` secara bersamaan (dipicu sebelum INSERT dan UPDATE status).
+**Pemicu (trigger):** `records.enforce_max_two_active_users()` mencegah lebih dari dua akun `users` dengan `status = 'active'` secara bersamaan (dipicu sebelum INSERT dan UPDATE status). Pemicu menggunakan `pg_advisory_xact_lock` untuk serialisasi, sehingga aman terhadap transaksi bersamaan.
 
 ## 4. Strategi migrasi dan penomoran
 
@@ -91,6 +91,7 @@ Dokumen ini menjelaskan fondasi database PostgreSQL Dacie Beauty: skema `booking
 | `0002_booking_tables.sql` | Tabel `booking` (termasuk `booking_rules` dengan nilai awal 30/3/30/2) dan index pendukung |
 | `0003_records_tables.sql` | Tabel `records` dan index pendukung |
 | `0004_constraints.sql` | Exclusion constraint anti-overlap booking, pemicu maksimal dua akun aktif |
+| `0005_corrections.sql` | Koreksi tipe `actor_user_id` ke `bigint` dan serialisasi pemicu batas dua akun aktif (`pg_advisory_xact_lock`) agar aman konkuren |
 
 ## 5. Cara menjalankan migrasi
 
