@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `9080ddbb5c80b94441f1b97c489cbf93722579be` |
-| Commit message | `fix(db): koreksi tipe actor_user_id dan pemicu aman konkuren` |
+| SHA commit implementasi | `9607185f0b273cdd26653f676cd97ae63e3a7495` |
+| Commit message | `test(db): bukti lock-wait pemicu dua akun aktif pada transaksi bersamaan` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
