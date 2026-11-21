@@ -81,14 +81,16 @@ export async function transaction<T>(
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   let client: PoolClient | undefined;
+  let transactionStarted = false;
   try {
     client = await getPool().connect();
     await client.query("BEGIN");
+    transactionStarted = true;
     const result = await work(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    if (client !== undefined) {
+    if (client !== undefined && transactionStarted) {
       await client.query("ROLLBACK").catch(() => {});
     }
     throw sanitizeDatabaseError(error);
