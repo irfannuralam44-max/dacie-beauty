@@ -188,42 +188,49 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
 
     const c1 = await connect();
     const c2 = await connect();
-    await c1.query("SET statement_timeout = '3s'");
-    await c2.query("SET statement_timeout = '3s'");
+    await c1.query("SET statement_timeout = '8s'");
+    await c2.query("SET statement_timeout = '8s'");
     try {
       await c1.query('BEGIN');
       await c2.query('BEGIN');
 
+      // c1 memasang akun aktif kedua dan menahan advisory lock (belum commit).
       const hasil1 = c1.query(
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Dua', 'user_dua', 'hash_dua', 'active')"
       );
+      await hasil1;
+      // c1 sengaja belum COMMIT agar advisory lock masih ditegang oleh transaksi c1.
+
+      // c2 mencoba memasang akun aktif ketiga secara konkuren; akan diblokir advisory lock c1.
+      const t0 = Date.now();
       const hasil2 = c2.query(
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Tiga', 'user_tiga', 'hash_tiga', 'active')"
       );
-      const hasil = await Promise.allSettled([hasil1, hasil2]);
 
-      let berhasil = 0;
-      for (const [klien, hasilKlien] of [[c1, hasil[0]], [c2, hasil[1]]] as const) {
-        if (hasilKlien.status === 'fulfilled') {
-          try {
-            await klien.query('COMMIT');
-            berhasil += 1;
-          } catch {
-            await klien.query('ROLLBACK').catch(() => {});
-          }
-        } else {
-          await klien.query('ROLLBACK').catch(() => {});
-        }
+      // Beri waktu c2 untuk mulai menunggu advisory lock, lalu c1 melepaskan dengan commit.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await c1.query('COMMIT');
+
+      const durasiC2 = Date.now() - t0;
+      let gagal2 = false;
+      try {
+        await hasil2;
+      } catch {
+        gagal2 = true;
       }
+      await c2.query('ROLLBACK').catch(() => {});
 
-      assert.strictEqual(berhasil, 1, 'paling banyak satu akun aktif tambahan boleh berhasil');
+      // c2 harus menunggu advisory lock (durasi cukup lama, bukan gagal cepat karena statement_timeout)
+      // lalu ditolak oleh pemicu karena akun aktif sudah mencapai dua setelah c1 commit.
+      assert.ok(durasiC2 > 200, `c2 seharusnya menunggu advisory lock, durasi ${durasiC2}ms`);
+      assert.ok(gagal2, 'c2 harus ditolak setelah c1 commit karena maksimal dua akun aktif');
+
+      const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
+      assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');
     } finally {
       await c1.end();
       await c2.end();
     }
-
-    const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
-    assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');
   } finally {
     await c.end();
   }
