@@ -41,6 +41,7 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 - Working tree sebelum mulai: bersih
 - Fetch/pull: `git fetch origin --prune`; `git switch main`; `git pull --ff-only origin main` berhasil; SHA lokal = `origin/main`
 - SHA commit kode: `f828f92af9f7dea10a2c63895e75147db63db853`
+- SHA laporan: `11ff3f5b8f71359419a5ea13a15aaf7355f8b81e`
 
 ## Perintah yang dijalankan
 
@@ -98,4 +99,4 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 - Branch: `agent/T-001-app-bootstrap`
 - SHA kode: `f828f92af9f7dea10a2c63895e75147db63db853`
 - Commit: `feat(app): bootstrap Next.js App Router structure`
-- Push: (akan diisi setelah push)
+- Push: berhasil (branch `agent/T-001-app-bootstrap` ke origin)
