@@ -9,7 +9,7 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi | (akan diisi setelah commit) |
+| SHA verifikasi | `64a99b0e6ef38aac9c903ddee6610b6cd3eb40a6` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Laporan | `docs/reports/T-006-data-access.md` |
 
@@ -92,7 +92,7 @@ Database uji: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 
 ```text
 Push: belum dilakukan
 Branch: agent/T-006-data-access
-SHA: (akan ditentukan saat commit)
-Commit: (akan ditentukan saat commit)
+SHA: 64a99b0e6ef38aac9c903ddee6610b6cd3eb40a6
+Commit: fix(data-access): terapkan temuan audit PR #7 - server-only boundary, batasi API pool, dan tes rollback transaction
 Laporan: docs/reports/T-006-data-access.md
 ```
