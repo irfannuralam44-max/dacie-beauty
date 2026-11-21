@@ -1,5 +1,8 @@
 import { getAppMode } from "@/lib/app-mode";
 
+// Mode aplikasi ditentukan saat runtime, bukan saat build.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   const mode = getAppMode();
 

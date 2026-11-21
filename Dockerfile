@@ -20,4 +20,4 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ \"$APP_MODE\" != \"public\" ] && [ \"$APP_MODE\" != \"private\" ]; then echo 'APP_MODE must be set to public or private' >&2; exit 1; fi; exec node server.js"]

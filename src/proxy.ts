@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-function getAppMode(): "public" | "private" {
-  const mode = process.env.APP_MODE;
-  if (mode === "public" || mode === "private") {
-    return mode;
-  }
-  // Fail closed: treat unknown/missing mode as public-safe? 
-  // For bootstrap, default to public to avoid exposing private routes.
-  return "public";
-}
-
 export function proxy(request: NextRequest) {
-  const mode = getAppMode();
+  const mode = process.env.APP_MODE;
   const { pathname } = request.nextUrl;
+
+  // Fail-closed: mode tidak valid/tidak ada tidak boleh membuka route apa pun.
+  if (mode !== "public" && mode !== "private") {
+    return new NextResponse(null, { status: 404 });
+  }
 
   if (mode === "public" && pathname.startsWith("/rekam")) {
     return new NextResponse(null, { status: 404 });

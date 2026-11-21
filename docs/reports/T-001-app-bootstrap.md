@@ -53,8 +53,11 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 | `npm run typecheck` | Tanpa error | 0 |
 | `APP_MODE=public npm run build` | Build berhasil; route `/`, `/booking`, `/rekam` | 0 |
 | `APP_MODE=private npm run build` | Build berhasil; route `/`, `/booking`, `/rekam` | 0 |
+| `env -u APP_MODE npm run build` | Build berhasil tanpa APP_MODE; `/` menjadi dynamic (ƒ) | 0 |
+| `./scripts/smoke-app-modes.sh` | Build + runtime public/private/invalid lulus | 0 |
 | Runtime public: `/`, `/booking`, `/rekam` | 200, 200, 404 | 0 |
 | Runtime private: `/`, `/rekam`, `/booking` | 200, 200, 404 | 0 |
+| Runtime invalid: `/` | 500, log memuat error APP_MODE | 0 (proses gagal startup) |
 | `scripts/verify.sh` | Tidak tersedia (task T-007 belum dikerjakan) | N/A |
 
 ## Hasil scripts/verify.sh
@@ -80,6 +83,26 @@ Tidak ada implementasi booking, autentikasi, schema database final, atau desain 
 - Guard mode dilakukan di `src/proxy.ts` (pengganti middleware pada Next.js 16) dan divalidasi runtime.
 - `.env.example` sengaja dilacak dengan pengecualian `.gitignore`.
 - `scripts/verify.sh` belum dibuat karena merupakan scope T-007; verifikasi dilakukan dengan perintah langsung yang setara (lint, typecheck, build).
+
+## Temuan audit dan perbaikan lanjutan
+
+1. **Static rendering `/` membaca `APP_MODE`**
+   - Temuan: halaman root memanggil `getAppMode()` dan pada build awal dapat ter-prerender statis sehingga mode terkunci saat build.
+   - Perbaikan: tambah `export const dynamic = "force-dynamic"` pada `src/app/page.tsx`; bukti build menampilkan `/` sebagai `ƒ (Dynamic)`.
+   - Pengujian: `env -u APP_MODE npm run build` berhasil (exit 0) dan smoke script lulus.
+
+2. **Fallback invalid/missing `APP_MODE` pada proxy**
+   - Temuan: `src/proxy.ts` mengembalikan `public` untuk mode tidak valid.
+   - Perbaikan: proxy sekarang fail-closed (404 untuk semua route) jika `APP_MODE` bukan `public`/`private`.
+   - Pengujian: runtime invalid mengembalikan HTTP 500 dari instrumentation dan log memuat error; proxy juga fail-closed. Smoke script lulus.
+
+3. **Bukti pengujian kedua mode**
+   - Ditambahkan `scripts/smoke-app-modes.sh` yang membangun dan menjalankan mode public, private, dan invalid, lalu memeriksa status HTTP dan konten.
+   - Hasil: `ALL SMOKE CHECKS PASSED` (exit 0).
+
+4. **Docker**
+   - `Dockerfile` menggunakan satu image standalone; `CMD` memvalidasi `APP_MODE` sebelum menjalankan `node server.js`.
+   - Docker tidak tersedia di lingkungan ini, sehingga build image tidak diuji; dicatat sebagai tidak terverifikasi.
 
 ## Masalah yang tersisa
 
