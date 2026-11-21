@@ -9,8 +9,8 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi kode | `8dc0212a1e5d03281247815a80d600f46284396f` |
-| SHA final branch | `8dc0212a1e5d03281247815a80d600f46284396f` |
+| SHA verifikasi kode | `00a6cfe1c0fcbfe5a6a979a74028fe81a1ea60ea` (sebelum perubahan F-005) |
+| SHA final branch | (akan ditentukan saat commit) |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Status push | Berhasil |
 | Laporan | `docs/reports/T-006-data-access.md` |

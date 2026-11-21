@@ -61,8 +61,9 @@ export async function query<T extends Record<string, unknown> = Record<string, u
   text: string,
   params?: readonly unknown[],
 ): Promise<QueryResult<T>> {
-  const client = await getPool().connect();
+  let client: PoolClient | undefined;
   try {
+    client = await getPool().connect();
     if (params === undefined) {
       return await client.query<T>(text);
     }
@@ -70,24 +71,31 @@ export async function query<T extends Record<string, unknown> = Record<string, u
   } catch (error) {
     throw sanitizeDatabaseError(error);
   } finally {
-    client.release();
+    if (client !== undefined) {
+      client.release();
+    }
   }
 }
 
 export async function transaction<T>(
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const client = await getPool().connect();
+  let client: PoolClient | undefined;
   try {
+    client = await getPool().connect();
     await client.query("BEGIN");
     const result = await work(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK").catch(() => {});
+    if (client !== undefined) {
+      await client.query("ROLLBACK").catch(() => {});
+    }
     throw sanitizeDatabaseError(error);
   } finally {
-    client.release();
+    if (client !== undefined) {
+      client.release();
+    }
   }
 }
 
