@@ -92,6 +92,7 @@ Dokumen ini menjelaskan fondasi database PostgreSQL Dacie Beauty: skema `booking
 | `0003_records_tables.sql` | Tabel `records` dan index pendukung |
 | `0004_constraints.sql` | Exclusion constraint anti-overlap booking, pemicu maksimal dua akun aktif |
 | `0005_corrections.sql` | Koreksi tipe `actor_user_id` ke `bigint` dan serialisasi pemicu batas dua akun aktif (`pg_advisory_xact_lock`) agar aman konkuren |
+| `0006_database_roles.sql` | Role runtime dan function owner, grant minimum schema/tabel/kolom/sequence, serta default privileges |
 
 ## 5. Cara menjalankan migrasi
 
@@ -163,7 +164,38 @@ DATABASE_URL="postgresql://...@db:5432/dacie_t004" node --test src/db/exclusion.
 ```
 Hasil: 5/5 lulus.
 
-## 8. Asumsi, keterbatasan, dan risiko terbuka
+
+## 8. Role database dan privilege minimum (T-005)
+
+Migrasi `0006_database_roles.sql` membuat empat role:
+
+| Role | Login | Hak utama |
+|---|---:|---|
+| `app_public` | Ya | `USAGE` schema `booking`; tidak memiliki privilege tabel/sequence dan tidak memiliki `USAGE` schema `records`. EXECUTE fungsi publik diberikan secara eksplisit pada T-042. |
+| `app_private` | Ya | SELECT seluruh tabel `booking`; INSERT/UPDATE tabel konfigurasi tanpa DELETE; DML SELECT/INSERT/UPDATE/DELETE pada `records`. Tidak memiliki DML pada `booking.bookings`. |
+| `booking_public_fn_owner` | Tidak | `USAGE` schema `booking`; SELECT tabel konfigurasi; SELECT/INSERT `bookings`; USAGE sequence bookings. |
+| `booking_private_fn_owner` | Tidak | `USAGE` schema `booking`; SELECT bookings; UPDATE hanya kolom `status`; INSERT `status_events`; USAGE sequence status_events. |
+
+Keempat role bukan superuser dan tidak memiliki CREATEDB, CREATEROLE, REPLICATION, atau BYPASSRLS. Role owner fungsi juga NOLOGIN. Tidak ada grant pada schema `records` untuk kedua function owner.
+
+**Kredensial:** migrasi tidak menyimpan password. Atur password/credential LOGIN `app_public` dan `app_private` melalui secret manager atau environment deployment yang sesuai; jangan commit password ke repository. `booking_public_fn_owner` dan `booking_private_fn_owner` tidak boleh diberi password atau diubah menjadi LOGIN.
+
+**Default privileges:** untuk objek yang dibuat oleh role migrasi yang menjalankan T-005, tabel baru di `booking` otomatis dapat dibaca `app_private`; tabel baru di `records` mendapat DML `app_private`; sequence baru di `records` mendapat USAGE `app_private`; EXECUTE fungsi baru tidak diberikan ke PUBLIC. Sequence booking dan DML tabel booking baru harus diberi grant eksplisit sesuai kebutuhan tabel, agar sequence bookings dan tabel booking sensitif tidak otomatis terbuka. Default privileges PostgreSQL melekat pada role pembuat objek; jalankan migrasi berikutnya dengan role migrasi yang sama atau atur default privileges terpisah untuk role pembuat objek tersebut.
+
+**Fungsi:** T-005 tidak membuat fungsi booking dan tidak memberikan EXECUTE ke role runtime. T-042/T-043 harus memberikan EXECUTE hanya pada fungsi masing-masing kepada role aplikasi yang ditentukan. Fungsi trigger `records.enforce_max_two_active_users()` dicabut EXECUTE-nya dari PUBLIC; trigger tetap dapat menjalankan fungsi tersebut.
+
+**Tes:** `src/db/roles.test.ts` memeriksa kredensial nyata melalui `APP_PUBLIC_DATABASE_URL` dan `APP_PRIVATE_DATABASE_URL`, privilege kedua function owner, serta default privileges. Tes kredensial dilewati jika URL role terkait tidak disetel. Jalankan dengan:
+
+```bash
+DATABASE_URL="postgresql://<migration-role>:<password>@<host>:5432/<db>" \
+APP_PUBLIC_DATABASE_URL="postgresql://app_public:<password>@<host>:5432/<db>" \
+APP_PRIVATE_DATABASE_URL="postgresql://app_private:<password>@<host>:5432/<db>" \
+npm test
+```
+
+Tes memerlukan database uji sintetis yang sudah menerapkan migrasi 0001–0006. Jangan memakai kredensial atau data produksi untuk pengujian.
+
+## 9. Asumsi, keterbatasan, dan risiko terbuka
 
 - Role database (`app_public`, `app_private`) dan owner fungsi (`booking_public_fn_owner`, `booking_private_fn_owner`) belum dibuat; merupakan scope T-005. Migrasi T-004 dijalankan sebagai role superuser/migrasi.
 - Fungsi publik `get_public_config()`, `get_blocked_intervals()`, `create_booking()`, dan `set_booking_status()` belum diimplementasikan (scope T-042/T-043).
