@@ -201,29 +201,37 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
       await hasil1;
       // c1 sengaja belum COMMIT agar advisory lock masih ditegang oleh transaksi c1.
 
-      // c2 mencoba memasang akun aktif ketiga secara konkuren; akan diblokir advisory lock c1.
-      const t0 = Date.now();
+      // c2 mencoba memasang akun aktif ketiga secara konkuren; c2 harus diblokir advisory lock c1.
       const hasil2 = c2.query(
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Tiga', 'user_tiga', 'hash_tiga', 'active')"
       );
 
-      // Beri waktu c2 untuk mulai menunggu advisory lock, lalu c1 melepaskan dengan commit.
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Sebelum c1 commit, c2 masih harus menunggu advisory lock (belum selesai).
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const pendeteksi = Promise.race([
+        hasil2.then(() => 'resolved'),
+        new Promise((r) => setTimeout(() => r('pending'), 100)),
+      ]);
+      assert.strictEqual(await pendeteksi, 'pending', 'c2 masih menunggu advisory lock sebelum c1 commit');
+
+      // c1 melepaskan advisory lock dengan commit.
       await c1.query('COMMIT');
 
-      const durasiC2 = Date.now() - t0;
+      // Setelah c1 commit, c2 dilanjutkan dan harus ditolak oleh pemicu trigger
+      // karena akun aktif sudah mencapai dua (User Satu + User Dua).
       let gagal2 = false;
+      let kodeError2: string | null = null;
       try {
         await hasil2;
-      } catch {
+      } catch (err) {
         gagal2 = true;
+        kodeError2 = (err as { code?: string }).code ?? null;
       }
       await c2.query('ROLLBACK').catch(() => {});
 
-      // c2 harus menunggu advisory lock (durasi cukup lama, bukan gagal cepat karena statement_timeout)
-      // lalu ditolak oleh pemicu karena akun aktif sudah mencapai dua setelah c1 commit.
-      assert.ok(durasiC2 > 200, `c2 seharusnya menunggu advisory lock, durasi ${durasiC2}ms`);
+      // c2 harus ditolak oleh trigger (bukan statement_timeout / kode 57014).
       assert.ok(gagal2, 'c2 harus ditolak setelah c1 commit karena maksimal dua akun aktif');
+      assert.notStrictEqual(kodeError2, '57014', `c2 tidak boleh gagal karena statement_timeout (57014), kode aktual: ${kodeError2}`);
 
       const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
       assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');

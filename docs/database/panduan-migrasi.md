@@ -117,7 +117,8 @@ Contoh output apply pada database kosong:
 [TERAPKAN] 0002_booking_tables.sql
 [TERAPKAN] 0003_records_tables.sql
 [TERAPKAN] 0004_constraints.sql
-Berhasil menerapkan 4 dari 4 migrasi.
+[TERAPKAN] 0005_corrections.sql
+Berhasil menerapkan 5 dari 5 migrasi.
 ```
 
 Contoh output re-apply (idempoten):
@@ -126,6 +127,7 @@ Contoh output re-apply (idempoten):
 [LEWAT]    0002_booking_tables.sql (sudah diterapkan)
 [LEWAT]    0003_records_tables.sql (sudah diterapkan)
 [LEWAT]    0004_constraints.sql (sudah diterapkan)
+[LEWAT]    0005_corrections.sql (sudah diterapkan)
 Tidak ada migrasi baru yang perlu diterapkan.
 ```
 
@@ -140,9 +142,9 @@ Tidak ada migrasi baru yang perlu diterapkan.
 
 Diverifikasi terhadap PostgreSQL nyata (`postgres:17-alpine`) pada database kosong yang dibangun dari seluruh migrasi:
 
-1. Database kosong dapat dibangun dari seluruh 4 migrasi secara berurutan. (**Terdiverifikasi**)
+1. Database kosong dapat dibangun dari seluruh 5 migrasi secara berurutan. (**Terdiverifikasi**)
 2. Kedua skema `booking` dan `records` terbentuk. (**Terdiverifikasi**)
-3. Seluruh tabel dan kolom wajib tersedia (14 tabel application + 1 tabel pelacakan). (**Terdiverifikasi**)
+3. Seluruh tabel dan kolom wajib tersedia (13 tabel application + 1 tabel pelacakan). (**Terdiverifikasi**)
 4. Constraint dan index tersedia, termasuk exclusion constraint `bookings_no_overlap_active`. (**Terdiverifikasi**)
 5. Nilai awal `booking_rules`: slot_step_minutes=30, min_notice_hours=3, max_advance_days=30, max_active_per_wa=2. (**Terdiverifikasi**)
 6. Status booking hanya menerima lima nilai yang diizinkan; nilai lain ditolak oleh CHECK constraint. (**Terdiverifikasi**)
@@ -151,14 +153,15 @@ Diverifikasi terhadap PostgreSQL nyata (`postgres:17-alpine`) pada database koso
 9. Exclusion constraint menolak dua booking aktif (`pending`/`confirmed`) yang intervalnya tumpang tindih pada provider yang sama. (**Terdiverifikasi**)
 10. Booking `cancelled`/`completed`/`no_show` tidak menghalangi interval baru pada provider yang sama. (**Terdiverifikasi**)
 11. Dua transaksi bersamaan pada provider dan interval yang sama: paling banyak satu booking aktif berhasil (satu committed, satu ditolak oleh constraint/deadlock). (**Terdiverifikasi**)
+11b. Dua transaksi bersamaan pada pemicu maksimal dua akun aktif: transaksi kedua menunggu advisory lock, lalu ditolak oleh trigger setelah transaksi pertama commit (maksimal dua akun aktif terpenuhi). (**Terdiverifikasi**)
 12. Migrasi yang sudah diterapkan tidak diedit; re-apply melewati versi yang sudah dicatat. (**Terdiverifikasi**)
 13. Fixture/seed hanya memakai data sintetis (tidak ada data pelanggan nyata pada migrasi ini; `booking_rules` hanya berisi konfigurasi awal). (**Terdiverifikasi**)
 
-Integrasi tes tersimpan di `src/db/exclusion.test.ts` (4 tes) dan diverifikasi dengan perintah:
+Integrasi tes tersimpan di `src/db/exclusion.test.ts` (5 tes) dan diverifikasi dengan perintah:
 ```bash
 DATABASE_URL="postgresql://...@db:5432/dacie_t004" node --test src/db/exclusion.test.ts
 ```
-Hasil: 4/4 lulus.
+Hasil: 5/5 lulus.
 
 ## 8. Asumsi, keterbatasan, dan risiko terbuka
 
