@@ -29,7 +29,7 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 - Docker Engine: `29.1.3`
 - Docker Compose: `2.40.3+ds1-0ubuntu1~24.04.1`
 - SHA commit kode: `da5a520bfa863596e43d54f678881790285aeb0a`
-- SHA perbaikan compose: (diisi setelah commit)
+- SHA perbaikan compose: `a2d94774be4cb693cb3a7da7f73b76c30f37ddd1`
 
 ## Perintah yang dijalankan
 
@@ -121,4 +121,4 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 - SHA commit kode: `da5a520bfa863596e43d54f678881790285aeb0a`
 - Commit: `feat(compose): add development stack for both app modes`
 - Push: berhasil (branch `agent/T-002-dev-compose` ke origin)
-- SHA laporan: (diisi setelah commit)
+- SHA laporan: `a2d94774be4cb693cb3a7da7f73b76c30f37ddd1`
