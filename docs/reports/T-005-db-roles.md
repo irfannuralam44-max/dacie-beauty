@@ -9,7 +9,7 @@
 | Branch | `agent/T-005-db-roles` |
 | Base branch | `main` |
 | SHA base | `fae0c9aededa1af8f7150fc6501a7dca0631e410` |
-| Status implementasi | Dibuat pada branch; menunggu verifikasi PostgreSQL lokal |
+| Status implementasi | Perbaikan membership dan idempotensi ditambahkan; menunggu verifikasi ulang agent lokal |
 | Laporan | `docs/reports/T-005-db-roles.md` |
 
 ## 2. Ringkasan
@@ -61,11 +61,15 @@ File `src/db/roles.test.ts` mencakup:
 3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
 4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
 
-**Status eksekusi:** Dijalankan pada PostgreSQL lokal (`postgres:16` via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_test`). Semua 35 tes lulus: 5 tes exclusion (T-004) + 4 tes role/privilege (T-005) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
+**Status eksekusi setelah audit:** Belum dijalankan ulang untuk revisi ini. Klaim hasil lama PostgreSQL 16/35 tes tidak dipakai sebagai bukti untuk commit terbaru. Agent lokal harus mencatat versi aktual dari `SHOW server_version`, jumlah tes yang benar-benar berjalan/skip, dan hasil setiap perintah. Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
 
-## 7. Perintah verifikasi yang harus dijalankan
+## 7. Verifikasi ulang untuk commit audit
 
-Pada database uji sintetis PostgreSQL 17 yang telah menerapkan migrasi 0001–0005:
+Status sementara: **PENDING** sampai agent lokal menjalankan ulang migrasi 0001–0006 dan seluruh pemeriksaan pada commit terbaru. Catat versi PostgreSQL aktual, hasil migrasi awal dan re-apply, integration test (termasuk test membership), lint, dan typecheck secara terpisah. Pisahkan kegagalan baru dari kegagalan pre-existing yang dapat dibuktikan berasal dari baseline `main`.
+
+## 8. Perintah verifikasi yang harus dijalankan
+
+Pada database uji sintetis lokal dengan versi PostgreSQL yang dicatat dari `SHOW server_version`, mulai dari migrasi 0001–0005:
 
 ```bash
 DATABASE_URL="postgresql://<migration-role>:<password>@<host>:5432/<db>" \
@@ -83,7 +87,7 @@ npm test
 
 Jalankan juga `npm run lint` dan `npm run typecheck`. Catat hasil terpisah; masalah typecheck `LayoutProps` yang sudah tercatat pada laporan T-004 bukan bagian dari T-005.
 
-## 8. Batas scope dan tindak lanjut
+## 9. Batas scope dan tindak lanjut
 
 - Tidak membuat `get_public_config`, `get_blocked_intervals`, `create_booking`, atau `set_booking_status`; fungsi tetap menjadi scope T-042/T-043.
 - T-042/T-043 harus menetapkan owner fungsi dan memberikan EXECUTE eksplisit hanya ke role aplikasi terkait.
