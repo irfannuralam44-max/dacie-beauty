@@ -9,8 +9,8 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi kode | `b0caba83fdf9986faf410daec58e82594ae583f0` |
-| SHA final branch | `74779ae8c727f9d720055539851e05cdb4e2be35` |
+| SHA verifikasi kode | `8dc0212a1e5d03281247815a80d600f46284396f` |
+| SHA final branch | `8dc0212a1e5d03281247815a80d600f46284396f` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Status push | Berhasil |
 | Laporan | `docs/reports/T-006-data-access.md` |
@@ -102,7 +102,7 @@ Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node
 ```text
 Push: berhasil
 Branch: agent/T-006-data-access
-SHA: 74779ae8c727f9d720055539851e05cdb4e2be35
-Commit: fix(data-access): terapkan temuan audit PR #7 - negative test boundary, sanitasi error database
+SHA: 8dc0212a1e5d03281247815a80d600f46284396f
+Commit: docs(report): sinkronisasi SHA final dan status push T-006
 Laporan: docs/reports/T-006-data-access.md
 ```
