@@ -20,18 +20,34 @@ function skipIfMissing(t: { skip: (message?: string) => void }, value: string | 
   return true;
 }
 
-async function listTables(client: Client, schema: string) {
-  const result = await client.query(
-    `SELECT table_name
-       FROM information_schema.tables
-      WHERE table_schema = $1 AND table_type = 'BASE TABLE'
-      ORDER BY table_name`,
-    [schema],
-  );
-  return result.rows.map((row: { table_name: string }) => row.table_name as string);
+async function listObjects(client: Client, kind: 'tables' | 'sequences', schema: string) {
+  const result = kind === 'tables'
+    ? await client.query(
+        `SELECT table_name AS object_name
+           FROM information_schema.tables
+          WHERE table_schema = $1 AND table_type = 'BASE TABLE'
+          ORDER BY table_name`,
+        [schema],
+      )
+    : await client.query(
+        `SELECT sequence_name AS object_name
+           FROM information_schema.sequences
+          WHERE sequence_schema = $1
+          ORDER BY sequence_name`,
+        [schema],
+      );
+  return result.rows.map((row: { object_name: string }) => row.object_name as string);
 }
 
-test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap tabel', async (t) => {
+async function privilege(client: Client, relation: string, name: string) {
+  const result = await client.query(
+    'SELECT has_table_privilege(current_user, $1, $2) AS allowed',
+    [relation, name],
+  );
+  return result.rows[0].allowed as boolean;
+}
+
+test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap tabel/sequence', async (t) => {
   if (!skipIfMissing(t, ADMIN_URL, 'DATABASE_URL') ||
       !skipIfMissing(t, PUBLIC_URL, 'APP_PUBLIC_DATABASE_URL')) return;
 
@@ -39,8 +55,7 @@ test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap t
   const publicClient = await connect(PUBLIC_URL as string);
   try {
     for (const schema of ['booking', 'records']) {
-      const tables = await listTables(admin, schema);
-      for (const table of tables) {
+      for (const table of await listObjects(admin, 'tables', schema)) {
         await assert.rejects(
           publicClient.query(`SELECT * FROM "${schema}"."${table}" LIMIT 0`),
           (error: { code?: string }) => error.code === '42501',
@@ -51,6 +66,13 @@ test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap t
           (error: { code?: string }) => error.code === '42501',
           `app_public tidak boleh INSERT ${schema}.${table}`,
         );
+      }
+      for (const sequence of await listObjects(admin, 'sequences', schema)) {
+        const result = await publicClient.query(
+          'SELECT has_sequence_privilege(current_user, $1, \'USAGE\') AS allowed',
+          [`"${schema}"."${sequence}"`],
+        );
+        assert.equal(result.rows[0].allowed, false, `app_public tidak boleh memakai ${schema}.${sequence}`);
       }
     }
 
@@ -68,21 +90,15 @@ test('app_private dengan kredensial nyata hanya mendapat DML booking pada tabel 
   if (!skipIfMissing(t, PRIVATE_URL, 'APP_PRIVATE_DATABASE_URL')) return;
   const client = await connect(PRIVATE_URL as string);
   try {
-    const bookingTables = await listTables(client, 'booking');
+    const bookingTables = await listObjects(client, 'tables', 'booking');
     for (const table of bookingTables) {
       await client.query(`SELECT * FROM booking."${table}" LIMIT 0`);
     }
 
     for (const table of ['treatments', 'providers', 'working_hours', 'time_off', 'booking_rules']) {
-      const privileges = await client.query(
-        `SELECT
-           has_table_privilege(current_user, 'booking."${table}"', 'INSERT') AS can_insert,
-           has_table_privilege(current_user, 'booking."${table}"', 'UPDATE') AS can_update,
-           has_table_privilege(current_user, 'booking."${table}"', 'DELETE') AS can_delete`,
-      );
-      assert.equal(privileges.rows[0].can_insert, true, `${table}: INSERT`);
-      assert.equal(privileges.rows[0].can_update, true, `${table}: UPDATE`);
-      assert.equal(privileges.rows[0].can_delete, false, `${table}: DELETE`);
+      assert.equal(await privilege(client, `booking.${table}`, 'INSERT'), true, `${table}: INSERT`);
+      assert.equal(await privilege(client, `booking.${table}`, 'UPDATE'), true, `${table}: UPDATE`);
+      assert.equal(await privilege(client, `booking.${table}`, 'DELETE'), false, `${table}: DELETE`);
     }
 
     await assert.rejects(
@@ -98,17 +114,10 @@ test('app_private dengan kredensial nyata hanya mendapat DML booking pada tabel 
       (error: { code?: string }) => error.code === '42501',
     );
 
-    const recordsTables = await listTables(client, 'records');
-    for (const table of recordsTables) {
-      const privileges = await client.query(
-        `SELECT
-           has_table_privilege(current_user, 'records."${table}"', 'SELECT') AS can_select,
-           has_table_privilege(current_user, 'records."${table}"', 'INSERT') AS can_insert,
-           has_table_privilege(current_user, 'records."${table}"', 'UPDATE') AS can_update,
-           has_table_privilege(current_user, 'records."${table}"', 'DELETE') AS can_delete`,
-      );
-      for (const privilege of Object.values(privileges.rows[0])) {
-        assert.equal(privilege, true, `app_private harus memiliki DML pada records.${table}`);
+    for (const table of await listObjects(client, 'tables', 'records')) {
+      for (const action of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
+        assert.equal(await privilege(client, `records.${table}`, action), true,
+          `app_private harus memiliki ${action} pada records.${table}`);
       }
     }
   } finally {
@@ -135,52 +144,83 @@ test('kedua function owner NOLOGIN, bukan superuser, dan hanya memiliki privileg
       assert.equal(role.rolbypassrls, false);
     }
 
+    const bookingTables = await listObjects(client, 'tables', 'booking');
+    const recordsTables = await listObjects(client, 'tables', 'records');
+    const bookingSequences = await listObjects(client, 'sequences', 'booking');
+
     await client.query('SET ROLE booking_public_fn_owner');
-    const publicOwner = await client.query(
-      `SELECT
-         has_schema_privilege(current_user, 'booking', 'USAGE') AS booking_usage,
-         has_schema_privilege(current_user, 'records', 'USAGE') AS records_usage,
-         has_table_privilege(current_user, 'booking.treatments', 'SELECT') AS config_select,
-         has_table_privilege(current_user, 'booking.treatments', 'UPDATE') AS config_update,
-         has_table_privilege(current_user, 'booking.bookings', 'SELECT') AS bookings_select,
-         has_table_privilege(current_user, 'booking.bookings', 'INSERT') AS bookings_insert,
-         has_table_privilege(current_user, 'booking.bookings', 'UPDATE') AS bookings_update,
-         has_table_privilege(current_user, 'booking.bookings', 'DELETE') AS bookings_delete`,
-    );
-    assert.deepEqual(publicOwner.rows[0], {
-      booking_usage: true,
-      records_usage: false,
-      config_select: true,
-      config_update: false,
-      bookings_select: true,
-      bookings_insert: true,
-      bookings_update: false,
-      bookings_delete: false,
-    });
+    assert.equal((await client.query(
+      "SELECT has_schema_privilege(current_user, 'booking', 'USAGE') AS allowed",
+    )).rows[0].allowed, true);
+    assert.equal((await client.query(
+      "SELECT has_schema_privilege(current_user, 'records', 'USAGE') AS allowed",
+    )).rows[0].allowed, false);
+
+    const publicSelect = new Set([
+      'treatments', 'providers', 'working_hours', 'time_off', 'booking_rules', 'bookings',
+    ]);
+    for (const table of bookingTables) {
+      const relation = `booking.${table}`;
+      assert.equal(await privilege(client, relation, 'SELECT'), publicSelect.has(table), `${relation} SELECT`);
+      assert.equal(await privilege(client, relation, 'INSERT'), table === 'bookings', `${relation} INSERT`);
+      assert.equal(await privilege(client, relation, 'UPDATE'), false, `${relation} UPDATE`);
+      assert.equal(await privilege(client, relation, 'DELETE'), false, `${relation} DELETE`);
+    }
+    for (const table of recordsTables) {
+      for (const action of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
+        assert.equal(await privilege(client, `records.${table}`, action), false,
+          `booking_public_fn_owner ${action} records.${table}`);
+      }
+    }
+    for (const sequence of bookingSequences) {
+      const result = await client.query(
+        'SELECT has_sequence_privilege(current_user, $1, \'USAGE\') AS allowed',
+        [`booking.${sequence}`],
+      );
+      assert.equal(result.rows[0].allowed, sequence === 'bookings_id_seq');
+    }
     await client.query('RESET ROLE');
 
     await client.query('SET ROLE booking_private_fn_owner');
-    const privateOwner = await client.query(
-      `SELECT
-         has_schema_privilege(current_user, 'booking', 'USAGE') AS booking_usage,
-         has_schema_privilege(current_user, 'records', 'USAGE') AS records_usage,
-         has_table_privilege(current_user, 'booking.bookings', 'SELECT') AS bookings_select,
-         has_table_privilege(current_user, 'booking.bookings', 'UPDATE') AS table_update,
-         has_column_privilege(current_user, 'booking.bookings', 'status', 'UPDATE') AS status_update,
-         has_column_privilege(current_user, 'booking.bookings', 'nama', 'UPDATE') AS name_update,
-         has_table_privilege(current_user, 'booking.status_events', 'INSERT') AS events_insert,
-         has_table_privilege(current_user, 'booking.status_events', 'SELECT') AS events_select`,
+    assert.equal((await client.query(
+      "SELECT has_schema_privilege(current_user, 'booking', 'USAGE') AS allowed",
+    )).rows[0].allowed, true);
+    assert.equal((await client.query(
+      "SELECT has_schema_privilege(current_user, 'records', 'USAGE') AS allowed",
+    )).rows[0].allowed, false);
+
+    for (const table of bookingTables) {
+      const relation = `booking.${table}`;
+      assert.equal(await privilege(client, relation, 'SELECT'), table === 'bookings', `${relation} SELECT`);
+      assert.equal(await privilege(client, relation, 'INSERT'), table === 'status_events', `${relation} INSERT`);
+      assert.equal(await privilege(client, relation, 'UPDATE'), false, `${relation} table UPDATE`);
+      assert.equal(await privilege(client, relation, 'DELETE'), false, `${relation} DELETE`);
+    }
+
+    const columns = await client.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'booking' AND table_name = 'bookings'`,
     );
-    assert.deepEqual(privateOwner.rows[0], {
-      booking_usage: true,
-      records_usage: false,
-      bookings_select: true,
-      table_update: false,
-      status_update: true,
-      name_update: false,
-      events_insert: true,
-      events_select: false,
-    });
+    for (const { column_name } of columns.rows) {
+      const result = await client.query(
+        'SELECT has_column_privilege(current_user, $1, $2, \'UPDATE\') AS allowed',
+        ['booking.bookings', column_name],
+      );
+      assert.equal(result.rows[0].allowed, column_name === 'status', `UPDATE kolom bookings.${column_name}`);
+    }
+    for (const table of recordsTables) {
+      for (const action of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
+        assert.equal(await privilege(client, `records.${table}`, action), false,
+          `booking_private_fn_owner ${action} records.${table}`);
+      }
+    }
+    for (const sequence of bookingSequences) {
+      const result = await client.query(
+        'SELECT has_sequence_privilege(current_user, $1, \'USAGE\') AS allowed',
+        [`booking.${sequence}`],
+      );
+      assert.equal(result.rows[0].allowed, sequence === 'status_events_id_seq');
+    }
     await client.query('RESET ROLE');
   } finally {
     await client.query('RESET ROLE').catch(() => {});
@@ -215,8 +255,8 @@ test('default privileges tidak membuka akses berlebih pada objek baru', async (t
          has_table_privilege('app_private', 'records.__t005_default_acl_probe', 'DELETE') AS can_delete,
          has_sequence_privilege('app_private', 'records.__t005_default_acl_probe_id_seq', 'USAGE') AS sequence_usage`,
     );
-    for (const privilege of Object.values(recordsAcl.rows[0])) {
-      assert.equal(privilege, true);
+    for (const privilegeValue of Object.values(recordsAcl.rows[0])) {
+      assert.equal(privilegeValue, true);
     }
 
     const functionAcl = await client.query(
