@@ -40,11 +40,23 @@ async function listObjects(client: Client, kind: 'tables' | 'sequences', schema:
 }
 
 async function privilege(client: Client, relation: string, name: string) {
-  const result = await client.query(
-    'SELECT has_table_privilege(current_user, $1, $2) AS allowed',
-    [relation, name],
-  );
-  return result.rows[0].allowed as boolean;
+  try {
+    const result = await client.query(
+      'SELECT has_table_privilege(current_user, $1, $2) AS allowed',
+      [relation, name],
+    );
+    return result.rows[0].allowed as boolean;
+  } catch (error: unknown) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === '42501'
+    ) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap tabel/sequence', async (t) => {
@@ -68,11 +80,24 @@ test('app_public dengan kredensial nyata ditolak SELECT dan INSERT pada setiap t
         );
       }
       for (const sequence of await listObjects(admin, 'sequences', schema)) {
-        const result = await publicClient.query(
-          'SELECT has_sequence_privilege(current_user, $1, \'USAGE\') AS allowed',
-          [`"${schema}"."${sequence}"`],
-        );
-        assert.equal(result.rows[0].allowed, false, `app_public tidak boleh memakai ${schema}.${sequence}`);
+        let sequenceUsage = false;
+        try {
+          const result = await publicClient.query(
+            'SELECT has_sequence_privilege(current_user, $1, \'USAGE\') AS allowed',
+            [`"${schema}"."${sequence}"`],
+          );
+          sequenceUsage = result.rows[0].allowed as boolean;
+        } catch (error: unknown) {
+          if (
+            typeof error !== 'object' ||
+            error === null ||
+            !('code' in error) ||
+            (error as { code?: string }).code !== '42501'
+          ) {
+            throw error;
+          }
+        }
+        assert.equal(sequenceUsage, false, `app_public tidak boleh memakai ${schema}.${sequence}`);
       }
     }
 

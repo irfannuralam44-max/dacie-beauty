@@ -61,7 +61,7 @@ File `src/db/roles.test.ts` mencakup:
 3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
 4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
 
-**Status eksekusi:** belum dijalankan pada environment PostgreSQL dalam sesi ini. Repository connector memungkinkan perubahan file/branch GitHub, tetapi tidak menyediakan shell/database PostgreSQL untuk menjalankan migrasi atau tes. Karena itu tidak ada klaim PASS untuk tes runtime. Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
+**Status eksekusi:** Dijalankan pada PostgreSQL lokal (`postgres:16` via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_test`). Semua 35 tes lulus: 5 tes exclusion (T-004) + 4 tes role/privilege (T-005) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
 
 ## 7. Perintah verifikasi yang harus dijalankan
 
