@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `9607185f0b273cdd26653f676cd97ae63e3a7495` |
-| Commit message | `test(db): bukti lock-wait pemicu dua akun aktif pada transaksi bersamaan` |
+| SHA commit implementasi | `58c5f0a0f7006268ce37d47829450fe4f2e4648b` |
+| Commit message | `fix(db): bukti lock-wait pemicu dua akun aktif dan sinkronisasi dokumentasi migrasi` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
@@ -28,6 +28,7 @@ Task ini sengaja tidak mengerjakan role/privilege (`app_public`, `app_private`, 
 | `db/migrations/0002_booking_tables.sql` | Dibuat | Tabel `booking` (treatments, providers, working_hours, time_off, booking_rules, bookings, status_events) + nilai awal `booking_rules` 30/3/30/2 |
 | `db/migrations/0003_records_tables.sql` | Dibuat | Tabel `records` (users, customers, visits, audit_logs, sessions, consent_versions) |
 | `db/migrations/0004_constraints.sql` | Dibuat | Exclusion constraint `bookings_no_overlap_active` + pemicu maksimal dua akun `users` aktif |
+| `db/migrations/0005_corrections.sql` | Dibuat | Koreksi tipe `actor_user_id` ke `bigint` dan serialisasi pemicu batas dua akun aktif (`pg_advisory_xact_lock`) agar aman konkuren |
 | `scripts/migrate.mjs` | Dibuat | Skrip penerap migrasi (terapkan, status, transaksi per file, pelacakan versi) |
 | `src/db/exclusion.test.ts` | Dibuat | Tes integrasi PostgreSQL: exclusion constraint, status, dan dua transaksi bersamaan |
 | `docs/database/panduan-migrasi.md` | Dibuat | Dokumentasi skema, strategi migrasi, cara apply/status, kebutuhan extension, hasil verifikasi |
@@ -86,7 +87,7 @@ Extension `btree_gist` versi 1.7 terpasang pada `postgres:17-alpine` dan berhasi
 
 | # | Kriteria | Status | Bukti |
 |---|---|---|---|
-| 1 | Database kosong dapat dibangun melalui seluruh migrasi | PASS | `dacie_t004` dibangun dari 0 via `node scripts/migrate.mjs` (4/4 diterapkan) |
+| 1 | Database kosong dapat dibangun melalui seluruh migrasi | PASS | `dacie_t004` dibangun dari 0 via `node scripts/migrate.mjs` (5/5 diterapkan) |
 | 2 | Kedua schema berhasil dibuat | PASS | `\dn`: `booking`, `records` |
 | 3 | Seluruh tabel dan kolom wajib tersedia | PASS | 13 tabel application + 1 tabel pelacakan migrasi (`booking.schema_migrations`); kolom sesuai `information_schema.columns` |
 | 4 | Constraint dan index yang diwajibkan tersedia | PASS | PK, FK, UNIQUE, CHECK, exclusion constraint `bookings_no_overlap_active`, index pendukung |
