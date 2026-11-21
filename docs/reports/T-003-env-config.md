@@ -6,7 +6,7 @@ Ditambahkan modul validasi environment server terpusat (`src/lib/env/schema.ts` 
 
 Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_public`) dan `CAPTCHA_SECRET`; gagal startup jika `APP_PRIVATE_DATABASE_URL` atau `SESSION_SECRET` berisi nilai, atau DSN memakai role lain (misalnya `postgres` atau `app_private`). Mode private hanya menerima `APP_PRIVATE_DATABASE_URL` (DSN dengan role `app_private`) dan `SESSION_SECRET`; gagal startup jika `APP_PUBLIC_DATABASE_URL` atau `CAPTCHA_SECRET` berisi nilai, atau DSN memakai role lain (misalnya `postgres` atau `app_public`). Variabel wajib yang hilang/kosong, `APP_MODE` tidak valid, atau DSN PostgreSQL yang salah format menggagalkan startup. Pesan error hanya memuat nama variabel dan aturan, tidak pernah nilainya.
 
-`.env.example`, README, dan Compose diperbarui dengan nama variabel dan placeholder dummy. Compose memberikan variabel mode yang sesuai ke masing-masing service; `web-public` tidak menerima credential/secret privat. Ditambahkan 24 unit test konfigurasi valid/hilang/salah format/pencampuran secret. `npm test` ditambahkan.
+`.env.example`, README, dan Compose diperbarui dengan nama variabel dan placeholder dummy. Compose memberikan variabel mode yang sesuai ke masing-masing service; `web-public` tidak menerima credential/secret privat. Ditambahkan 26 unit test konfigurasi valid/hilang/salah format/pencampuran secret. `npm test` ditambahkan.
 
 ## Daftar file berubah
 
@@ -14,7 +14,7 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_publi
 |---|---|
 | `src/lib/env/schema.ts` | Schema/validasi murni: `parseAppMode`, `parseServerEnv`, `EnvValidationError`, aturan required/forbidden/format/secret |
 | `src/lib/env/server.ts` | Pembacaan `process.env` bertanda `server-only`, cache, `getServerEnv`, `assertServerEnv` |
-| `src/lib/env/schema.test.ts` | 24 unit test konfigurasi valid, hilang, salah format, pencampuran secret, guard source |
+| `src/lib/env/schema.test.ts` | 26 unit test konfigurasi valid, hilang, salah format, pencampuran secret, guard source |
 | `src/lib/app-mode.ts` | Membaca `APP_MODE` melalui parser terpusat |
 | `src/instrumentation.ts` | Validasi startup per runtime Node, dilewati pada fase build; `process.exit(1)` bila tidak sah |
 | `src/app/api/health/route.ts` | Health 503 bila konfigurasi tidak sah (tanpa detail) |
@@ -130,5 +130,5 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_publi
 - SHA commit implementasi: `f6cb1b220c4add27d15d82739fed6fe07c4832ca`
 - Commit implementasi awal: `feat(env): centralize and validate server environment config` (`ca1be35638c6e455f7fe4d39b9c1b07684ba97fa`)
 - Commit perbaikan audit: `fix(env): enforce database role per app mode` (`f6cb1b220c4add27d15d82739fed6fe07c4832ca`)
-- SHA commit laporan: commit terakhir pada branch ini (lihat `git log -1`); nilai pasti diberikan pada pesan chat setelah push
+- SHA commit laporan: `2171f61c75f85b989f5223df0c47219a58d09c41`
 - Push: berhasil (branch `agent/T-003-env-config` ke origin)
