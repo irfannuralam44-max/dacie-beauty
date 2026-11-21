@@ -14,9 +14,6 @@ export { query, transaction };
 
 export type { QueryResult };
 
-/**
- * Menjalankan query SELECT dengan parameter binding dan mengembalikan baris.
- */
 export async function select<T extends Record<string, unknown>>(
   text: string,
   params?: readonly unknown[],
@@ -25,10 +22,6 @@ export async function select<T extends Record<string, unknown>>(
   return result.rows;
 }
 
-/**
- * Menjalankan query INSERT/UPDATE/DELETE dengan parameter binding dan
- * mengembalikan baris yang terpengaruh.
- */
 export async function modify(
   text: string,
   params?: readonly unknown[],
@@ -36,10 +29,6 @@ export async function modify(
   return query(text, params);
 }
 
-/**
- * Menjalankan query yang mengembalikan satu baris, atau null bila tidak
- * ada hasil.
- */
 export async function selectOne<T extends Record<string, unknown>>(
   text: string,
   params?: readonly unknown[],

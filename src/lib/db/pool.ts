@@ -1,15 +1,15 @@
 /**
  * Lapisan akses data berbasis mode instance.
  *
- * Modul ini dibuat untuk digunakan hanya pada sisi server. Koneksi
- * database dipilih saat startup berdasarkan `APP_MODE`: instance public
- * hanya boleh membuat pool `app_public`; instance private hanya boleh
- * membuat pool `app_private`. Tidak ada fallback dan tidak ada cara untuk
- * memilih role/pool berdasarkan parameter request.
+ * Kredensial dibaca melalui `parseServerEnv` dari `../env/schema.ts` (fungsi
+ * yang juga dipakai oleh `getServerEnv` di `../env/server`). Pemilihan pool
+ * ditentukan oleh `APP_MODE`: instance public hanya boleh membuat pool
+ * `app_public`; instance private hanya boleh membuat pool `app_private`.
+ * Tidak ada fallback dan tidak ada cara untuk memilih role/pool berdasarkan
+ * parameter request.
  *
- * Kredensial dibaca melalui `getServerEnv` dari `../env/server`, yang
- * sudah ditandai `server-only` dan tidak dapat diimpor ke Client
- * Component.
+ * Modul ini adalah implementasi internal. API publik yang dilindungi
+ * `server-only` ada di `index.ts`.
  */
 
 import { Pool, type PoolClient, type QueryResult } from "pg";
@@ -17,24 +17,10 @@ import { parseServerEnv } from "../env/schema.ts";
 
 let pool: Pool | undefined;
 
-/**
- * Membuat pool PostgreSQL dari URL koneksi yang diberikan.
- *
- * Diekspor untuk keperluan pengujian unit; pool otomatis diambil dari
- * environment server melalui `getPool()` dalam produksi.
- */
-export function createPool(connectionString: string): Pool {
+function createPool(connectionString: string): Pool {
   return new Pool({ connectionString });
 }
 
-/**
- * Mengembalikan pool database untuk mode instance yang aktif.
- *
- * Instance public selalu menggunakan `appPublicDatabaseUrl` (role
- * `app_public`); instance private selalu menggunakan
- * `appPrivateDatabaseUrl` (role `app_private`). Tidak ada fallback ke
- * role lain dan tidak ada opsi pemilihan berdasarkan request.
- */
 export function getPool(): Pool {
   if (pool === undefined) {
     const env = parseServerEnv(process.env);
@@ -48,9 +34,6 @@ export function getPool(): Pool {
   return pool;
 }
 
-/**
- * Menutup pool database. Diekspor untuk keperluan pengujian.
- */
 export async function closePool(): Promise<void> {
   if (pool !== undefined) {
     await pool.end();
@@ -58,12 +41,6 @@ export async function closePool(): Promise<void> {
   }
 }
 
-/**
- * Menjalankan query dengan parameter binding.
- *
- * Semua query harus menggunakan parameter binding ($1, $2, dst.); tidak
- * boleh menyusun SQL dari input mentah.
- */
 export async function query<T extends Record<string, unknown> = Record<string, unknown>>(
   text: string,
   params?: readonly unknown[],
@@ -79,12 +56,6 @@ export async function query<T extends Record<string, unknown> = Record<string, u
   }
 }
 
-/**
- * Menjalankan sejumlah query dalam satu transaksi.
- *
- * Jika salah satu query gagal, seluruh transaksi di-rollback. Error
- * dilemparkan ke pemanggil tanpa menyisipkan detail sensitif.
- */
 export async function transaction<T>(
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
@@ -102,36 +73,10 @@ export async function transaction<T>(
   }
 }
 
-/**
- * Mengembalikan URL koneksi yang digunakan oleh pool untuk mode aktif.
- * Diekspor untuk pengujian unit; tidak pernah mencetak nilai secret.
- */
-export function getActiveConnectionString(): string {
-  const env = parseServerEnv(process.env);
-  return env.appMode === "public"
-    ? env.appPublicDatabaseUrl
-    : env.appPrivateDatabaseUrl;
-}
-
-/**
- * Mengembalikan role database yang digunakan oleh pool untuk mode aktif.
- * Diekspor untuk pengujian unit.
- */
-export function getActiveRole(): string {
-  const env = parseServerEnv(process.env);
-  return env.appMode === "public" ? "app_public" : "app_private";
-}
-
-/**
- * Mengecek apakah mode aktif adalah public.
- */
 export function isPublicPool(): boolean {
   return parseServerEnv(process.env).appMode === "public";
 }
 
-/**
- * Mengecek apakah mode aktif adalah private.
- */
 export function isPrivatePool(): boolean {
   return parseServerEnv(process.env).appMode === "private";
 }

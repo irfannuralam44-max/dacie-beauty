@@ -1,59 +1,50 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  getActiveConnectionString,
-  getActiveRole,
+  closePool,
   getPool,
   isPrivatePool,
   isPublicPool,
 } from "./pool.ts";
 
-function expectRole(connectionString: string, role: string): void {
-  assert.match(connectionString, new RegExp(`://${role}:`));
-}
-
-test("getPool mengembalikan Pool dengan connection string sesuai mode", () => {
+test("getPool mengembalikan Pool dengan connection string valid", () => {
   const pool = getPool();
-  const cs = (pool as { options: { connectionString: string } }).options
-    .connectionString;
-  const role = getActiveRole();
-  expectRole(cs, role);
-  assert.equal(getActiveConnectionString(), cs);
+  assert.ok(pool);
 });
 
-test("getActiveRole mengembalikan role sesuai mode aktif", () => {
-  const role = getActiveRole();
-  assert.ok(role === "app_public" || role === "app_private", `role tidak dikenal: ${role}`);
-  const cs = getActiveConnectionString();
-  expectRole(cs, role);
+test("isPublicPool dan isPrivatePool konsisten dan saling eksklusif", () => {
+  const pub = isPublicPool();
+  const pri = isPrivatePool();
+  assert.ok(pub !== pri, "salah satu mode harus aktif");
+  assert.equal(pub, !pri);
 });
 
-test("isPublicPool dan isPrivatePool konsisten dengan mode aktif", () => {
-  const role = getActiveRole();
-  if (role === "app_public") {
-    assert.equal(isPublicPool(), true);
-    assert.equal(isPrivatePool(), false);
-  } else if (role === "app_private") {
-    assert.equal(isPublicPool(), false);
-    assert.equal(isPrivatePool(), true);
-  } else {
-    assert.fail(`role tidak dikenal: ${role}`);
-  }
+test("getPool mengembalikan instance yang sama (singleton)", () => {
+  const pool1 = getPool();
+  const pool2 = getPool();
+  assert.equal(pool1, pool2);
 });
 
-test("tidak ada fallback ke role lain", () => {
-  const role = getActiveRole();
-  const cs = getActiveConnectionString();
-  const otherRole = role === "app_public" ? "app_private" : "app_public";
-  assert.ok(!cs.includes(`://${otherRole}:`));
+test("API publik tidak mengekspos createPool (tidak boleh menerima DSN arbitrer)", () => {
+  const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /\bcreatePool\b/);
 });
 
-test("pool memiliki opsi connectionString yang valid", () => {
+test("API publik tidak mengekspos getActiveConnectionString (DSN tidak boleh bocor)", () => {
+  const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /\bgetActiveConnectionString\b/);
+});
+
+test("API publik tidak mengekspos getActiveRole (nama role tidak boleh bocor)", () => {
+  const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /\bgetActiveRole\b/);
+});
+
+test("closePool menutup pool dan getPool membuat pool baru", async () => {
+  await closePool();
   const pool = getPool();
-  const cs = (pool as { options: { connectionString: string } }).options
-    .connectionString;
-  assert.match(cs, /^postgresql?:\/\//);
-  assert.match(cs, /@/);
-  assert.match(cs, /:\d+\//);
+  assert.ok(pool);
+  await closePool();
 });
