@@ -9,7 +9,7 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi | `2feb15f6514a7a432eaf65de8f89fff831e20ff4` |
+| SHA verifikasi | `64a99b0e6ef38aac9c903ddee6610b6cd3eb40a6` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Laporan | `docs/reports/T-006-data-access.md` |
 
