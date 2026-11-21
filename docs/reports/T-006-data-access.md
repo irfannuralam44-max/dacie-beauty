@@ -9,8 +9,8 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi kode | `00a6cfe1c0fcbfe5a6a979a74028fe81a1ea60ea` (sebelum perubahan F-005) |
-| SHA final branch | (akan ditentukan saat commit) |
+| SHA verifikasi kode | `915d0a1d0139c40469fad6ae7f9a535a410f0f61` |
+| SHA final branch | `915d0a1d0139c40469fad6ae7f9a535a410f0f61` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Status push | Berhasil |
 | Laporan | `docs/reports/T-006-data-access.md` |
@@ -102,7 +102,7 @@ Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node
 ```text
 Push: berhasil
 Branch: agent/T-006-data-access
-SHA: 8dc0212a1e5d03281247815a80d600f46284396f
-Commit: docs(report): sinkronisasi SHA final dan status push T-006
+SHA: 915d0a1d0139c40469fad6ae7f9a535a410f0f61
+Commit: fix(db): pindahkan getPool().connect() ke dalam blok try untuk sanitasi kegagalan koneksi
 Laporan: docs/reports/T-006-data-access.md
 ```
