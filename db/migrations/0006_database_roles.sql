@@ -24,6 +24,40 @@ ALTER ROLE app_private WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICAT
 ALTER ROLE booking_public_fn_owner WITH NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE booking_private_fn_owner WITH NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
+-- Hilangkan seluruh membership yang menyentuh empat role ini, baik sebagai
+-- member (hak diwariskan/SET ROLE) maupun sebagai role yang diberikan kepada
+-- role lain. CASCADE juga mencabut membership turunan yang bergantung padanya.
+DO $memberships$
+DECLARE
+  membership RECORD;
+BEGIN
+  FOR membership IN
+    SELECT granted.rolname AS granted_role,
+           member.rolname AS member_role,
+           grantor.rolname AS grantor_role
+      FROM pg_catalog.pg_auth_members AS m
+      JOIN pg_catalog.pg_roles AS granted ON granted.oid = m.roleid
+      JOIN pg_catalog.pg_roles AS member ON member.oid = m.member
+      JOIN pg_catalog.pg_roles AS grantor ON grantor.oid = m.grantor
+     WHERE granted.rolname IN (
+       'app_public', 'app_private',
+       'booking_public_fn_owner', 'booking_private_fn_owner'
+     )
+        OR member.rolname IN (
+       'app_public', 'app_private',
+       'booking_public_fn_owner', 'booking_private_fn_owner'
+     )
+  LOOP
+    EXECUTE format(
+      'REVOKE %I FROM %I GRANTED BY %I CASCADE',
+      membership.granted_role,
+      membership.member_role,
+      membership.grantor_role
+    );
+  END LOOP;
+END
+$memberships$;
+
 -- Tidak ada role aplikasi/owner yang boleh membuat objek atau memakai schema records
 -- kecuali app_private. Cabut privilege bawaan yang mungkin berasal dari konfigurasi lama.
 REVOKE ALL ON SCHEMA booking, records FROM PUBLIC;

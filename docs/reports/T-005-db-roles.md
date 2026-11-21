@@ -9,8 +9,8 @@
 | Branch | `agent/T-005-db-roles` |
 | Base branch | `main` |
 | SHA base | `fae0c9aededa1af8f7150fc6501a7dca0631e410` |
-| SHA verifikasi | `e31b229ae990c962aa6a38ed7a0fff5b9f7e77ce` |
-| Status implementasi | Selesai; verifikasi PostgreSQL lokal lulus |
+| SHA verifikasi | `20f7703` (HEAD lokal sebelum merge) + `a0f0383` (origin) |
+| Status implementasi | Selesai; verifikasi PostgreSQL lokal lulus setelah merge. Origin mencakup hardening membership `pg_auth_members` dan integrasi tes tambahan. |
 | Laporan | `docs/reports/T-005-db-roles.md` |
 
 ## 2. Ringkasan
@@ -21,7 +21,7 @@ Menambahkan migrasi `0006_database_roles.sql` untuk membuat role runtime `app_pu
 
 | File | Perubahan |
 |---|---|
-| `db/migrations/0006_database_roles.sql` | Membuat empat role; mengatur atribut keamanan; grant/revoke schema, tabel, kolom status, sequence; default privileges; revoke EXECUTE PUBLIC pada trigger function T-004 |
+| `db/migrations/0006_database_roles.sql` | Membuat atau menormalkan empat role; mencabut seluruh membership `pg_auth_members` yang menyentuh role T-005 (termasuk grantor berbeda dan membership turunan dengan `CASCADE`); grant/revoke schema, tabel, kolom status, sequence; default privileges; revoke EXECUTE PUBLIC pada trigger function T-004 |
 | `src/db/roles.test.ts` | Tes kredensial nyata app_public/app_private, batas kedua function owner, dan default privileges |
 | `docs/database/panduan-migrasi.md` | Dokumentasi role, credential handling, default privileges, dan cara menjalankan tes |
 | `docs/reports/T-005-db-roles.md` | Laporan task |
@@ -61,8 +61,9 @@ File `src/db/roles.test.ts` mencakup:
 2. Dengan `APP_PRIVATE_DATABASE_URL`, SELECT seluruh tabel booking berhasil; DML langsung pada bookings ditolak; lima tabel konfigurasi memiliki INSERT/UPDATE tanpa DELETE; seluruh tabel records memiliki DML.
 3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
 4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
+5. Membership tambahan diuji dengan menambahkan membership `t005_membership_probe` ke seluruh role T-005, membuktikan privilege efektif bocor sebelum migrasi, menjalankan ulang SQL migrasi terhadap role yang sudah ada dengan atribut permisif, lalu memastikan semua membership yang menyentuh empat role hilang dan atribut role kembali sesuai matriks.
 
-**Status eksekusi:** Dijalankan pada PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_clean_test` (database bersih). Migrasi 0001–0006 diterapkan 6/6; re-apply melewati semua versi (idempoten). Semua 35 tes lulus: 5 tes exclusion (T-004) + 4 tes role/privilege (T-005) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
+**Status eksekusi:** Dijalankan pada PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_merge_test` (database bersih, setelah merge origin/agent/T-005-db-roles). Migrasi 0001–0006 diterapkan 6/6; re-apply melewati semua versi (idempoten). Semua 36 tes lulus: 5 tes exclusion (T-004) + 5 tes role/privilege (T-005, termasuk tes membersihkan membership tambahan) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
 
 ### Audit pg_auth_members dan kompatibilitas migrasi 0006
 
@@ -97,7 +98,7 @@ Jalankan juga `npm run lint` dan `npm run typecheck`. Catat hasil terpisah; masa
 |---|---|---|
 | Migrasi 0001–0006 pada database bersih | PASS | 6/6 diterapkan |
 | Re-apply migrasi (idempotensi) | PASS | Semua versi dilewati |
-| Integration test (35 tes) | PASS | 35/35 lulus dengan kredensial role nyata |
+| Integration test (36 tes) | PASS | 36/36 lulus dengan kredensial role nyata (termasuk tes membersihkan membership tambahan) |
 | Lint (`npm run lint`) | PASS | Tanpa error/warning |
 | Typecheck (`npm run typecheck`) | FAIL | Error pre-existing `LayoutProps` di `src/app/layout.tsx:20`; tidak terkait T-005 |
 | Audit `pg_auth_members` | PASS | Tidak ada membership role yang tidak diinginkan |

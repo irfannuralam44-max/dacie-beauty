@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { Client } from 'pg';
 
@@ -249,6 +250,92 @@ test('kedua function owner NOLOGIN, bukan superuser, dan hanya memiliki privileg
     await client.query('RESET ROLE');
   } finally {
     await client.query('RESET ROLE').catch(() => {});
+    await client.end();
+  }
+});
+
+test('migrasi membersihkan membership tambahan dan aman untuk role yang sudah ada', async (t) => {
+  if (!skipIfMissing(t, ADMIN_URL, 'DATABASE_URL')) return;
+  const client = await connect(ADMIN_URL as string);
+  const targetRoles = [
+    'app_public',
+    'app_private',
+    'booking_public_fn_owner',
+    'booking_private_fn_owner',
+  ];
+  try {
+    await client.query('BEGIN');
+    await client.query('CREATE ROLE t005_membership_probe NOLOGIN');
+
+    // Buat membership dua arah pada seluruh role. app_public mewarisi hak
+    // app_private sehingga tes membuktikan privilege efektif memang bertambah.
+    for (const role of targetRoles) {
+      await client.query(`GRANT t005_membership_probe TO "${role}"`);
+      await client.query(`GRANT "${role}" TO t005_membership_probe`);
+    }
+    await client.query('GRANT app_private TO app_public');
+
+    const leakedBefore = await client.query(
+      "SELECT has_table_privilege('app_public', 'records.users', 'SELECT') AS allowed",
+    );
+    assert.equal(leakedBefore.rows[0].allowed, true,
+      'membership app_private seharusnya menambahkan privilege efektif sebelum migrasi');
+
+    // Simulasikan role lama dengan atribut yang terlalu permisif.
+    await client.query('ALTER ROLE app_public CREATEDB CREATEROLE BYPASSRLS');
+    await client.query('ALTER ROLE app_private CREATEDB CREATEROLE BYPASSRLS');
+    await client.query('ALTER ROLE booking_public_fn_owner LOGIN CREATEDB CREATEROLE BYPASSRLS');
+    await client.query('ALTER ROLE booking_private_fn_owner LOGIN CREATEDB CREATEROLE BYPASSRLS');
+
+    const migrationSql = await readFile(
+      new URL('../../db/migrations/0006_database_roles.sql', import.meta.url),
+      'utf8',
+    );
+    await client.query(migrationSql);
+
+    const memberships = await client.query(
+      `SELECT granted.rolname AS granted_role, member.rolname AS member_role
+         FROM pg_catalog.pg_auth_members AS m
+         JOIN pg_catalog.pg_roles AS granted ON granted.oid = m.roleid
+         JOIN pg_catalog.pg_roles AS member ON member.oid = m.member
+        WHERE granted.rolname = ANY($1::text[])
+           OR member.rolname = ANY($1::text[])`,
+      [targetRoles],
+    );
+    assert.deepEqual(memberships.rows, [], 'tidak boleh ada membership yang menyentuh role T-005');
+
+    const effective = await client.query(
+      `SELECT
+         has_table_privilege('app_public', 'records.users', 'SELECT') AS public_records_select,
+         has_table_privilege('app_private', 'booking.bookings', 'INSERT') AS private_booking_insert`,
+    );
+    assert.equal(effective.rows[0].public_records_select, false,
+      'app_public tidak boleh memperoleh SELECT records melalui membership');
+    assert.equal(effective.rows[0].private_booking_insert, false,
+      'app_private tidak boleh memperoleh INSERT bookings melalui membership');
+
+    const roles = await client.query(
+      `SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+         FROM pg_catalog.pg_roles
+        WHERE rolname = ANY($1::text[])
+        ORDER BY rolname`,
+      [targetRoles],
+    );
+    assert.equal(roles.rows.length, 4);
+    for (const role of roles.rows) {
+      assert.equal(role.rolsuper, false);
+      assert.equal(role.rolcreatedb, false);
+      assert.equal(role.rolcreaterole, false);
+      assert.equal(role.rolreplication, false);
+      assert.equal(role.rolbypassrls, false);
+      assert.equal(
+        role.rolcanlogin,
+        role.rolname === 'app_public' || role.rolname === 'app_private',
+        `${role.rolname}: atribut LOGIN`,
+      );
+    }
+  } finally {
+    await client.query('ROLLBACK').catch(() => {});
     await client.end();
   }
 });

@@ -98,7 +98,7 @@ Dokumen ini menjelaskan fondasi database PostgreSQL Dacie Beauty: skema `booking
 
 Skrip: `scripts/migrate.mjs` (membutuhkan Node.js dan paket `pg`).
 
-**Prasyarat:** variabel environment `DATABASE_URL` berisi connection string PostgreSQL (contoh: `postgresql://<user>:<pass>@<host>:5432/<db>`). Migrasi dijalankan sebagai role dengan hak membuat skema/tabel/extension (superuser atau role migrasi yang berhak).
+**Prasyarat:** variabel environment `DATABASE_URL` berisi connection string PostgreSQL (contoh: `postgresql://<user>:<pass>@<host>:5432/<db>`). Migrasi dijalankan sebagai role dengan hak membuat skema/tabel/extension (superuser atau role migrasi yang berhak). Untuk migrasi `0006_database_roles.sql`, gunakan superuser PostgreSQL: migrasi menormalkan atribut role dan mencabut seluruh membership yang menyentuh empat role T-005, termasuk grant dari grantor lain serta membership turunan (`CASCADE`).
 
 **Terapkan semua migrasi belum diterapkan:**
 ```bash
