@@ -1,11 +1,9 @@
-export type AppMode = "public" | "private";
+import { parseAppMode, type AppMode } from "./env/schema";
+
+export type { AppMode };
 
 export function getAppMode(): AppMode {
-  const mode = process.env.APP_MODE;
-  if (mode !== "public" && mode !== "private") {
-    throw new Error("APP_MODE must be 'public' or 'private'.");
-  }
-  return mode;
+  return parseAppMode(process.env.APP_MODE);
 }
 
 export function isPublicMode(): boolean {
