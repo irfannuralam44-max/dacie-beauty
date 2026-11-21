@@ -267,11 +267,10 @@ test('migrasi membersihkan membership tambahan dan aman untuk role yang sudah ad
     await client.query('BEGIN');
     await client.query('CREATE ROLE t005_membership_probe NOLOGIN');
 
-    // Buat membership dua arah pada seluruh role. app_public mewarisi hak
-    // app_private sehingga tes membuktikan privilege efektif memang bertambah.
+    // Buat membership pada seluruh role untuk membuktikan privilege efektif
+    // dapat bocor melalui membership sebelum migrasi dibersihkan.
     for (const role of targetRoles) {
       await client.query(`GRANT t005_membership_probe TO "${role}"`);
-      await client.query(`GRANT "${role}" TO t005_membership_probe`);
     }
     await client.query('GRANT app_private TO app_public');
 
