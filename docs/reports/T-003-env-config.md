@@ -129,5 +129,5 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` dan `CAPTCHA_SECRET`; gagal
 - Branch: `agent/T-003-env-config`
 - SHA commit implementasi: `ca1be35638c6e455f7fe4d39b9c1b07684ba97fa`
 - Commit implementasi: `feat(env): centralize and validate server environment config`
-- SHA commit laporan: `8e4a4969c1da3400ada88e13c61f2ce652bf814c`
+- SHA commit laporan: commit terakhir pada branch ini (lihat `git log -1`); nilai pasti diberikan pada pesan chat setelah push
 - Push: berhasil (branch `agent/T-003-env-config` ke origin)
