@@ -1,0 +1,112 @@
+# Laporan T-005 — Role Database dan Privilege Minimum
+
+## 1. Metadata
+
+| Item | Nilai |
+|---|---|
+| Repository | `irfannuralam44-max/dacie-beauty` |
+| Task ID | T-005 |
+| Branch | `agent/T-005-db-roles` |
+| Base branch | `main` |
+| SHA base | `fae0c9aededa1af8f7150fc6501a7dca0631e410` |
+| SHA verifikasi | `1f72b23135ac547ef24085aef826a982a704cabe` |
+| Status implementasi | Selesai; verifikasi PostgreSQL lokal lulus setelah merge. Origin mencakup hardening membership `pg_auth_members` dan integrasi tes tambahan. |
+| Laporan | `docs/reports/T-005-db-roles.md` |
+
+## 2. Ringkasan
+
+Menambahkan migrasi `0006_database_roles.sql` untuk membuat role runtime `app_public`/`app_private` dan dua function owner NOLOGIN sesuai D-11. Grant eksplisit membatasi akses schema, tabel, kolom, dan sequence. Default privileges ditetapkan untuk objek yang dibuat oleh role migrasi saat ini. Tidak ada fungsi booking yang dibuat dalam task ini.
+
+## 3. File dibuat/diubah
+
+| File | Perubahan |
+|---|---|
+| `db/migrations/0006_database_roles.sql` | Membuat atau menormalkan empat role; mencabut seluruh membership `pg_auth_members` yang menyentuh role T-005 (termasuk grantor berbeda dan membership turunan dengan `CASCADE`); grant/revoke schema, tabel, kolom status, sequence; default privileges; revoke EXECUTE PUBLIC pada trigger function T-004 |
+| `src/db/roles.test.ts` | Tes kredensial nyata app_public/app_private, batas kedua function owner, dan default privileges |
+| `docs/database/panduan-migrasi.md` | Dokumentasi role, credential handling, default privileges, dan cara menjalankan tes |
+| `docs/reports/T-005-db-roles.md` | Laporan task |
+
+## 4. Matriks privilege yang diterapkan
+
+| Role | Schema | Hak |
+|---|---|---|
+| `app_public` | `booking` | USAGE saja; tidak ada privilege tabel/sequence |
+| `app_public` | `records` | Tidak ada USAGE |
+| `app_private` | `booking` | SELECT semua tabel; INSERT/UPDATE lima tabel konfigurasi; tanpa DELETE dan tanpa DML bookings |
+| `app_private` | `records` | SELECT/INSERT/UPDATE/DELETE semua tabel; USAGE sequence |
+| `booking_public_fn_owner` | `booking` | SELECT konfigurasi; SELECT/INSERT bookings; USAGE sequence bookings |
+| `booking_private_fn_owner` | `booking` | SELECT bookings; UPDATE hanya kolom status; INSERT status_events; USAGE sequence status_events |
+| Kedua function owner | `records` | Tidak ada USAGE atau privilege objek |
+
+Semua role bukan superuser, tidak memiliki CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS. Kedua function owner NOLOGIN. Password role runtime tidak ditulis dalam migrasi atau repository.
+
+## 5. Default privileges
+
+Default privileges ditetapkan untuk role yang menjalankan migrasi:
+
+- Tabel baru di schema booking: SELECT untuk app_private saja.
+- Tabel baru di schema records: SELECT/INSERT/UPDATE/DELETE untuk app_private.
+- Sequence baru di schema records: USAGE untuk app_private.
+- Fungsi baru: EXECUTE tidak diberikan ke PUBLIC secara default.
+- Sequence booking tidak diberi grant otomatis. Migrasi berikutnya harus memberikan USAGE secara eksplisit hanya untuk jalur INSERT yang memang diizinkan.
+- DML tabel konfigurasi booking baru juga harus diberikan secara eksplisit; ini mencegah tabel bookings di masa depan ikut menerima INSERT/UPDATE secara otomatis.
+
+Default privileges PostgreSQL melekat pada role pembuat objek, sehingga migrasi berikutnya perlu memakai role migrasi yang sama atau mengatur default privileges untuk role pembuat objek lain.
+
+## 6. Pengujian yang disiapkan
+
+File `src/db/roles.test.ts` mencakup:
+
+1. Dengan `APP_PUBLIC_DATABASE_URL`, SELECT dan INSERT langsung pada setiap tabel di kedua schema harus gagal dengan SQLSTATE `42501`; schema records tidak boleh memiliki USAGE.
+2. Dengan `APP_PRIVATE_DATABASE_URL`, SELECT seluruh tabel booking berhasil; DML langsung pada bookings ditolak; lima tabel konfigurasi memiliki INSERT/UPDATE tanpa DELETE; seluruh tabel records memiliki DML.
+3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
+4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
+5. Membership tambahan diuji dengan menambahkan membership `t005_membership_probe` ke seluruh role T-005, membuktikan privilege efektif bocor sebelum migrasi, menjalankan ulang SQL migrasi terhadap role yang sudah ada dengan atribut permisif, lalu memastikan semua membership yang menyentuh empat role hilang dan atribut role kembali sesuai matriks.
+
+**Status eksekusi:** Dijalankan pada PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_merge_test` (database bersih, setelah merge origin/agent/T-005-db-roles). Migrasi 0001–0006 diterapkan 6/6; re-apply melewati semua versi (idempoten). Semua 36 tes lulus: 5 tes exclusion (T-004) + 5 tes role/privilege (T-005, termasuk tes membersihkan membership tambahan) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
+
+### Audit pg_auth_members dan kompatibilitas migrasi 0006
+
+- `pg_auth_members` tidak menyimpan membership role yang dibuat migrasi 0006 (hanya implicit PUBLIC memberships). Tidak ada role membership yang ditambahkan ke `booking_public_fn_owner` atau `booking_private_fn_owner`, sehingga tidak ada kenaikan hak secara tidak sengaja.
+- Migrasi 0006 kompatibel dengan PostgreSQL 16: `CREATE ROLE IF NOT EXISTS` via `DO $roles$`, `ALTER ROLE` dengan atribut keamanan, `REVOKE ALL`/`GRANT` eksplisit, dan `ALTER DEFAULT PRIVILEGES` menggunakan sintaks yang didukung PostgreSQL 16.
+- Migrasi 0006 aman untuk role yang sudah ada: `CREATE ROLE` dif guards dengan `IF NOT EXISTS`, `ALTER ROLE` menetapkan ulang atribut tanpa efek samping, `REVOKE ALL` sebelum `GRANT` memastikan tidak ada sisa privilege yang tidak diinginkan.
+- Tidak ada password role runtime yang ditulis dalam migrasi atau repository.
+
+## 7. Perintah verifikasi yang telah dijalankan
+
+Pada database uji sintetis PostgreSQL 16.15 yang telah menerapkan migrasi 0001–0006:
+
+```bash
+DATABASE_URL="postgresql://dacie_dev@localhost:5433/dacie_t005_clean_test" \
+node scripts/migrate.mjs
+```
+
+Setelah role runtime diberi password melalui secret lokal (jangan commit password):
+
+```bash
+DATABASE_URL="postgresql://dacie_dev@localhost:5433/dacie_t005_clean_test" \
+APP_PUBLIC_DATABASE_URL="postgresql://app_public:<password>@localhost:5433/dacie_t005_clean_test" \
+APP_PRIVATE_DATABASE_URL="postgresql://app_private:<password>@localhost:5433/dacie_t005_clean_test" \
+npm test
+```
+
+Jalankan juga `npm run lint` dan `npm run typecheck`. Catat hasil terpisah; masalah typecheck `LayoutProps` yang sudah tercatat pada laporan T-004 bukan bagian dari T-005.
+
+### Ringkasan hasil verifikasi (berdasarkan aktual)
+
+| Periksa | Hasil | Catatan |
+|---|---|---|
+| Migrasi 0001–0006 pada database bersih | PASS | 6/6 diterapkan |
+| Re-apply migrasi (idempotensi) | PASS | Semua versi dilewati |
+| Integration test (36 tes) | PASS | 36/36 lulus dengan kredensial role nyata (termasuk tes membersihkan membership tambahan) |
+| Lint (`npm run lint`) | PASS | Tanpa error/warning |
+| Typecheck (`npm run typecheck`) | FAIL | Error pre-existing `LayoutProps` di `src/app/layout.tsx:20`; tidak terkait T-005 |
+| Audit `pg_auth_members` | PASS | Tidak ada membership role yang tidak diinginkan |
+| Kompatibilitas PostgreSQL 16 | PASS | Migrasi 0006 kompatibel dan aman untuk role existing |
+
+## 8. Batas scope dan tindak lanjut
+
+- Tidak membuat `get_public_config`, `get_blocked_intervals`, `create_booking`, atau `set_booking_status`; fungsi tetap menjadi scope T-042/T-043.
+- T-042/T-043 harus menetapkan owner fungsi dan memberikan EXECUTE eksplisit hanya ke role aplikasi terkait.
+- Password `app_public` dan `app_private` harus dikonfigurasi di secret manager/environment deployment, tidak melalui migrasi.
+- Sebelum merge, jalankan migrasi dan tes di PostgreSQL lokal dengan kredensial role nyata; tinjau hasil default privileges untuk role migrasi yang dipakai.
