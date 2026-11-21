@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `f2e02b7b01ac8aeea645fd176f0ffb26807b5ad4` |
-| Commit message | `docs(report): catat status push T-004` |
+| SHA commit implementasi | `9080ddbb5c80b94441f1b97c489cbf93722579be` |
+| Commit message | `fix(db): koreksi tipe actor_user_id dan pemicu aman konkuren` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
