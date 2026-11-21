@@ -9,7 +9,7 @@
 | Branch | `agent/T-005-db-roles` |
 | Base branch | `main` |
 | SHA base | `fae0c9aededa1af8f7150fc6501a7dca0631e410` |
-| SHA verifikasi | `20f7703` (HEAD lokal sebelum merge) + `a0f0383` (origin) |
+| SHA verifikasi | `1f72b23135ac547ef24085aef826a982a704cabe` |
 | Status implementasi | Selesai; verifikasi PostgreSQL lokal lulus setelah merge. Origin mencakup hardening membership `pg_auth_members` dan integrasi tes tambahan. |
 | Laporan | `docs/reports/T-005-db-roles.md` |
 
