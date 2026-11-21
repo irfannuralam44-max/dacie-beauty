@@ -17,27 +17,44 @@ npm ci
 
 ## Konfigurasi environment
 
+Aplikasi hanya berjalan dengan konfigurasi server yang sah. Variabel dibaca di server dan divalidasi saat startup.
+
+| Variabel | Mode | Wajib | Keterangan |
+|---|---|---|---|
+| `APP_MODE` | keduanya | ya | Hanya `public` atau `private`. |
+| `APP_PUBLIC_DATABASE_URL` | public | ya | DSN PostgreSQL role `app_public`; protokol `postgres://` atau `postgresql://`, wajib berisi username, password, dan nama database. |
+| `CAPTCHA_SECRET` | public | ya | Secret CAPTCHA, minimal 32 karakter. |
+| `APP_PRIVATE_DATABASE_URL` | private | ya | DSN PostgreSQL role `app_private`; aturan format sama. |
+| `SESSION_SECRET` | private | ya | Secret sesi, minimal 32 karakter. |
+
+Aturan pemisahan mode:
+
+- Mode public gagal startup jika `APP_PRIVATE_DATABASE_URL` atau `SESSION_SECRET` berisi nilai.
+- Mode private gagal startup jika `APP_PUBLIC_DATABASE_URL` atau `CAPTCHA_SECRET` berisi nilai.
+- Variabel wajib yang hilang/kosong, `APP_MODE` tidak valid, atau format DSN salah menggagalkan startup.
+- Pesan error hanya menyebut nama variabel dan aturan; nilai secret tidak pernah dicetak.
+- Secret hanya dibaca modul server bertanda `server-only` dan tidak memakai prefix `NEXT_PUBLIC_`.
+
 Salin contoh konfigurasi:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Atur `APP_MODE` ke `public` atau `private`. Jangan commit `.env` atau nilai secret.
+`.env.example` hanya berisi placeholder dummy. Jangan commit `.env`, `.env.local`, atau secret nyata.
 
 ## Development
 
-Mode publik:
+Untuk menjalankan langsung tanpa Docker, sisakan hanya variabel untuk mode yang dipakai di `.env.local`:
+
+- Mode public: `APP_MODE=public`, `APP_PUBLIC_DATABASE_URL`, `CAPTCHA_SECRET`. Hapus atau komentari `APP_PRIVATE_DATABASE_URL` dan `SESSION_SECRET`.
+- Mode private: `APP_MODE=private`, `APP_PRIVATE_DATABASE_URL`, `SESSION_SECRET`. Hapus atau komentari `APP_PUBLIC_DATABASE_URL` dan `CAPTCHA_SECRET`.
 
 ```bash
-APP_MODE=public npm run dev
+npm run dev
 ```
 
-Mode privat:
-
-```bash
-APP_MODE=private npm run dev
-```
+Next.js juga memuat `.env` bila ada. File `.env` pada bagian Docker Compose berisi variabel kedua mode, sehingga jangan menjalankan `npm run dev` selama file itu ada; rename atau hapus sementara.
 
 Aplikasi tersedia di `http://localhost:3000`.
 
@@ -46,26 +63,21 @@ Aplikasi tersedia di `http://localhost:3000`.
 ```bash
 npm run lint
 npm run typecheck
+npm test
 ```
 
 ## Build
 
-Mode publik:
+Build tidak memerlukan secret runtime; satu build dipakai untuk kedua mode:
 
 ```bash
-APP_MODE=public npm run build
+npm run build
 ```
 
-Mode privat:
+Menjalankan hasil build memerlukan environment mode yang sah:
 
 ```bash
-APP_MODE=private npm run build
-```
-
-Jalankan hasil build:
-
-```bash
-APP_MODE=public npm run start
+npm run start
 ```
 
 ## Docker Compose development
@@ -83,6 +95,10 @@ Sesuaikan nilai dummy di `.env` untuk lingkungan lokal. Jangan commit `.env` ata
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — kredensial PostgreSQL lokal.
 - `WEB_PUBLIC_PORT` — port lokal `web-public` (default `3001`).
 - `WEB_PRIVATE_PORT` — port lokal `web-private` (default `3002`).
+- `APP_PUBLIC_DATABASE_URL`, `CAPTCHA_SECRET` — hanya diberikan ke `web-public`.
+- `APP_PRIVATE_DATABASE_URL`, `SESSION_SECRET` — hanya diberikan ke `web-private`.
+
+Satu file `.env` dipakai Compose untuk kedua service, tetapi setiap container hanya menerima variabel mode-nya. `web-public` tidak menerima credential atau secret privat. Nilai DSN pada `.env.example` memakai host `db` (jaringan Compose) dan password dummy yang tidak dapat dipakai di luar development.
 
 Periksa konfigurasi Compose tanpa menjalankan service:
 
@@ -139,6 +155,7 @@ docker compose exec db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SE
 - `POSTGRES_* is required`: pastikan `.env` sudah dibuat dari `.env.example`.
 - Port sudah dipakai: ubah `WEB_PUBLIC_PORT` atau `WEB_PRIVATE_PORT` di `.env`.
 - Service belum sehat: periksa `docker compose ps` dan `docker compose logs db`.
+- `Invalid server environment configuration`: periksa nama variabel pada log. Aplikasi hanya menerima variabel mode-nya; pastikan variabel wajib terisi dan variabel mode lain tidak ikut diberikan.
 - Aplikasi gagal start: pastikan `APP_MODE` service bernilai `public` atau `private`.
 - Data ingin direset total: `docker compose down -v` (menghapus volume `postgres_data`).
 
