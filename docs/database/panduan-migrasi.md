@@ -195,9 +195,25 @@ npm test
 
 Tes memerlukan database uji sintetis yang sudah menerapkan migrasi 0001–0006. Jangan memakai kredensial atau data produksi untuk pengujian.
 
+## 8. Lapisan Akses Data (T-006)
+
+Lapisan akses data berada di `src/lib/db/` dan memastikan pemilihan pool database ditentukan oleh `APP_MODE` saat startup, bukan oleh parameter request:
+
+- `src/lib/db/pool.ts` — membuat dan mengelola satu `pg.Pool` per proses. `getPool()` membaca environment melalui `parseServerEnv()` dan memilih `appPublicDatabaseUrl` (mode public) atau `appPrivateDatabaseUrl` (mode private). Tidak ada fallback dan tidak ada cara untuk memilih role/pool berdasarkan request.
+- `src/lib/db/client.ts` — wrapper query berparameter: `select`, `selectOne`, `modify` untuk operasi data dengan parameter binding.
+- `src/lib/db/index.ts` — ekspor publik lapisan akses data. Modul aplikasi hanya boleh mengimpor dari sini.
+
+### Aturan keamanan data access
+
+- Instance public (`APP_MODE=public`) hanya membuat pool `app_public` (hanya USAGE schema `booking`, EXECUTE fungsi publik D-02, tidak ada USAGE schema `records`, tidak ada privilege tabel langsung).
+- Instance private (`APP_MODE=private`) hanya membuat pool `app_private` (SELECT seluruh tabel booking, INSERT/UPDATE lima tabel konfigurasi, tanpa DML langsung pada `bookings`, DML lengkap pada `records`).
+- Semua query menggunakan parameter binding (`$1`, `$2`, dst.); tidak ada penyusunan SQL dari input mentah.
+- Transaksi didukung melalui `transaction(work)` dengan `BEGIN`/`COMMIT`/`ROLLBACK` otomatis.
+- Modul ditandai sebagai server-only; kredensial tidak pernah sampai ke client bundle.
+
 ## 9. Asumsi, keterbatasan, dan risiko terbuka
 
-- Role database (`app_public`, `app_private`) dan owner fungsi (`booking_public_fn_owner`, `booking_private_fn_owner`) belum dibuat; merupakan scope T-005. Migrasi T-004 dijalankan sebagai role superuser/migrasi.
+- Role database (`app_public`, `app_private`) dan owner fungsi (`booking_public_fn_owner`, `booking_private_fn_owner`) dibuat pada T-005 (migrasi 0006). Migrasi T-004 dijalankan sebagai role superuser/migrasi.
 - Fungsi publik `get_public_config()`, `get_blocked_intervals()`, `create_booking()`, dan `set_booking_status()` belum diimplementasikan (scope T-042/T-043).
 - Pemicu `enforce_max_two_active_users()` memaksakan maksimal dua akun `users` aktif pada tingkat database; ini merupakan dukungan awal untuk aturan "maksimal dua akun aktif" yang akan diatur lebih lanjut pada T-017.
 - Gating consent (field kesehatan/kulit dan kunjungan hanya setelah consent dicatat) ditangani pada lapisan aplikasi (T-021/T-022), bukan dibatasi sepenuhnya oleh constraint database.
