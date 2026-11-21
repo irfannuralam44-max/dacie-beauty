@@ -9,8 +9,8 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi kode | `915d0a1d0139c40469fad6ae7f9a535a410f0f61` |
-| SHA final branch | `915d0a1d0139c40469fad6ae7f9a535a410f0f61` |
+| SHA verifikasi kode | `5b48ff019fec414367a85e7745e46198f602f7b7` |
+| SHA final branch | `HEAD` (commit sinkronisasi laporan saat push) |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Status push | Berhasil |
 | Laporan | `docs/reports/T-006-data-access.md` |
@@ -25,10 +25,10 @@ Bergantung pada T-003 (validasi environment) dan T-005 (role database dan privil
 
 | File | Status | Tujuan |
 |---|---|---|
-| `src/lib/db/pool.ts` | Dibuat/revisi | Pembuatan dan pengelolaan `pg.Pool` per proses, pemilihan pool berdasarkan `APP_MODE`, query berparameter, transaksi dengan rollback otomatis, sanitasi error database, dengan `server-only` boundary |
+| `src/lib/db/pool.ts` | Dibuat/revisi | Pembuatan dan pengelolaan `pg.Pool` per proses, pemilihan pool berdasarkan `APP_MODE`, query berparameter, transaksi dengan flag `transactionStarted` (ROLLBACK hanya jika transaksi dimulai), sanitasi error database, dengan `server-only` boundary |
 | `src/lib/db/client.ts` | Dibuat/revisi | Wrapper query berparameter: `select`, `selectOne`, `modify`, dengan `server-only` boundary |
 | `src/lib/db/index.ts` | Dibuat/revisi | Ekspor publik lapisan akses data, dengan `server-only`, tanpa `getPool`/`isPrivatePool`/`isPublicPool` |
-| `src/lib/db/pool.test.ts` | Dibuat/revisi | Unit test pemilihan pool, konsistensi role, tidak ada fallback, negative test API publik |
+| `src/lib/db/pool.test.ts` | Dibuat/revisi | Unit test pemilihan pool, konsistensi role, tidak ada fallback, negative test API publik, dan regression test deterministik untuk connect failure, BEGIN failure, dan ROLLBACK |
 | `src/db/data-access.test.ts` | Dibuat/revisi | Integration test query, select, transaction rollback, pemisahan role (public/private), negative test boundary secara behavior (bukan hanya cek teks source) |
 | `docs/database/panduan-migrasi.md` | Diubah | Dokumentasi lapisan akses data dan aturan keamanan |
 | `src/lib/env/server.ts` | Diubah | Perbaikan import extension `.ts` |
@@ -42,7 +42,7 @@ Bergantung pada T-003 (validasi environment) dan T-005 (role database dan privil
 | 2 | `APP_MODE=private` hanya membuat pool `app_private` | PASS | `isPrivatePool()` = true, pool connection string mengandung `://app_private:` |
 | 3 | Test membuktikan instance public tidak dapat membuat/mengakses pool privat, termasuk melalui import tidak sengaja | PASS | `createPool` tidak diekspor dari `index.ts`; `getPool()` selalu mengembalikan pool sesuai mode; tes negative boundary secara behavior (getPool connection string hanya `://app_public:`, tidak ada parameter pemilihan role) lulus |
 | 4 | Tidak ada fallback atau helper yang memungkinkan request memilih role/pool | PASS | `getPool()` selalu mengembalikan instance yang sama (singleton); tidak ada parameter pemilihan role |
-| 5 | Query menggunakan parameter binding dan transaksi dapat di-rollback | PASS | `query(text, params)`, `transaction(work)` dengan `BEGIN`/`COMMIT`/`ROLLBACK`; tes rollback wrapper lulus, data tidak tersimpan setelah error, koneksi dapat digunakan kembali |
+| 5 | Query menggunakan parameter binding dan transaksi dapat di-rollback | PASS | `query(text, params)`, `transaction(work)` dengan flag `transactionStarted`, `BEGIN`/`COMMIT`/`ROLLBACK`; kegagalan sebelum/saat BEGIN tidak memicu ROLLBACK, kegagalan setelah BEGIN memicu ROLLBACK, error tersanitasi dengan cause asli, data tidak tersimpan setelah error, koneksi dapat digunakan kembali |
 | 6 | Secret koneksi hanya dibaca server-side dan public mode menolak secret privat saat startup | PASS | `index.ts` ditandai `server-only`; `parseServerEnv` menolak variabel privat pada mode public (sudah teruji T-003) |
 
 ## 5. Perintah yang dijalankan dan hasil
@@ -55,8 +55,8 @@ Database uji: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 
 | `node scripts/migrate.mjs` (re-apply) | Semua dilewati (idempoten) | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
 | `npm run typecheck` | FAIL: `src/app/layout.tsx(20,50)` error TS2304 — `LayoutProps` tidak terdefinisi/diimpor. Masalah pre-existing pada `main`, bukan regresi T-006. | 2 |
-| `npm test` (mode private, DATABASE_URL disetel) | 54 lulus, 0 gagal, 7 skip | 0 |
-| `npm test` (mode public, DATABASE_URL disetel) | 52 lulus, 0 gagal, 9 skip | 0 |
+| `npm test` (mode private, DATABASE_URL disetel) | 57 lulus, 0 gagal, 7 skip | 0 |
+| `npm test` (mode public, DATABASE_URL disetel) | 55 lulus, 0 gagal, 9 skip | 0 |
 
 Secret scanning (Gitleaks atau tool setara): belum dilakukan / tidak tersedia di environment ini.
 
@@ -64,7 +64,7 @@ Secret scanning (Gitleaks atau tool setara): belum dilakukan / tidak tersedia di
 
 ## 6. Hasil pengujian
 
-- **Unit test pool** (`src/lib/db/pool.test.ts`): 7/7 lulus dalam kedua mode (public dan private). Memverifikasi pool mengembalikan connection string yang valid, `isPublicPool()`/`isPrivatePool()` konsisten dan saling eksklusif, instance pool selalu sama (singleton), API publik tidak mengekspos `createPool`/`getActiveConnectionString`/`getActiveRole`.
+- **Unit test pool** (`src/lib/db/pool.test.ts`): 10/10 lulus dalam kedua mode (public dan private). Memverifikasi pool mengembalikan connection string yang valid, `isPublicPool()`/`isPrivatePool()` konsisten dan saling eksklusif, instance pool selalu sama (singleton), API publik tidak mengekspos `createPool`/`getActiveConnectionString`/`getActiveRole`. Ditambah 3 regression test deterministik: (1) stub `pool.connect()` reject langsung membuktikan `query()` dan `transaction()` melempar Error `"Terjadi kesalahan database"` dengan cause asli dan tanpa pemanggilan `release()` pada client undefined, (2) stub kegagalan `BEGIN` membuktikan tidak ada pemanggilan `ROLLBACK` dan client tetap di-release, (3) stub kegagalan setelah `BEGIN` berhasil membuktikan `ROLLBACK` tetap dipanggil dan client di-release. Stub selalu dipulihkan via `finally`.
 - **Integration test data access** (`src/db/data-access.test.ts`): 16/16 lulus dalam mode private, 13/13 lulus dalam mode public. Memverifikasi query berparameter, select/selectOne, transaksi commit melalui wrapper `transaction()`, rollback membatalkan semua data saat query gagal, koneksi dapat digunakan kembali setelah rollback, penolakan DML langsung pada `bookings` dengan error sanitasi, penolakan akses schema `records` oleh `app_public` dengan error sanitasi, SELECT seluruh tabel booking oleh `app_private`, tidak ada pembuatan pool privat melalui import tidak disengaja.
 - **Tes yang ada (T-004, T-005)**: Semua tetap lulus (exclusion constraint, role/privilege, validasi environment).
 
@@ -78,6 +78,7 @@ Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node
 - Satu pool per proses, dibuat saat primera panggilan `getPool()`; tidak ada pool per request.
 - Script test menggunakan `--conditions=react-server` agar pengujian Node dapat mengimpor modul `server-only` tanpa menghapus proteksi produksi.
 - Error database disandarkan melalui `sanitizeDatabaseError()` di `pool.ts` untuk mencegah bocornya detail internal (nama skema, tabel, kolom, kode status SQL) ke respons publik; error asli tetap tersedia melalui `error.cause` untuk diagnostik sisi server.
+- Flag `transactionStarted` pada `transaction()` diset `true` hanya setelah query `BEGIN` berhasil dieksekusi; `ROLLBACK` hanya dijalankan jika `client !== undefined && transactionStarted === true`.
 - Password role runtime tidak ditulis dalam repository; hanya digunakan untuk pengujian lokal.
 - Typecheck error `LayoutProps` di `src/app/layout.tsx:20` adalah masalah pre-existing pada `main`, bukan regresi T-006.
 
@@ -102,7 +103,7 @@ Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node
 ```text
 Push: berhasil
 Branch: agent/T-006-data-access
-SHA: 915d0a1d0139c40469fad6ae7f9a535a410f0f61
-Commit: fix(db): pindahkan getPool().connect() ke dalam blok try untuk sanitasi kegagalan koneksi
+SHA: HEAD (commit sinkronisasi laporan saat push)
+Commit: docs(report): sinkronisasi laporan verifikasi akhir T-006 dan regression test
 Laporan: docs/reports/T-006-data-access.md
 ```
