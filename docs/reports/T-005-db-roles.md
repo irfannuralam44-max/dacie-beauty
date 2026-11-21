@@ -9,7 +9,8 @@
 | Branch | `agent/T-005-db-roles` |
 | Base branch | `main` |
 | SHA base | `fae0c9aededa1af8f7150fc6501a7dca0631e410` |
-| Status implementasi | Dibuat pada branch; menunggu verifikasi PostgreSQL lokal |
+| SHA verifikasi | `e31b229ae990c962aa6a38ed7a0fff5b9f7e77ce` |
+| Status implementasi | Selesai; verifikasi PostgreSQL lokal lulus |
 | Laporan | `docs/reports/T-005-db-roles.md` |
 
 ## 2. Ringkasan
@@ -61,27 +62,46 @@ File `src/db/roles.test.ts` mencakup:
 3. Dengan koneksi administrasi `DATABASE_URL`, kedua owner diperiksa NOLOGIN/non-superuser; privilege publik diverifikasi; owner privat hanya memiliki UPDATE kolom status (bukan UPDATE tabel atau kolom nama).
 4. Default privileges diverifikasi melalui tabel/sequence/function probe dalam transaksi yang di-ROLLBACK.
 
-**Status eksekusi:** Dijalankan pada PostgreSQL lokal (`postgres:16` via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_test`). Semua 35 tes lulus: 5 tes exclusion (T-004) + 4 tes role/privilege (T-005) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
+**Status eksekusi:** Dijalankan pada PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 5433, role `dacie_dev`, database `dacie_t005_clean_test` (database bersih). Migrasi 0001–0006 diterapkan 6/6; re-apply melewati semua versi (idempoten). Semua 35 tes lulus: 5 tes exclusion (T-004) + 4 tes role/privilege (T-005) + 26 tes validasi lingkungan. Role runtime `app_public`/`app_private` diberi password lokal untuk keperluan tes (tidak di-commit). Tes role runtime akan dilewati bila URL kredensial terkait tidak disetel.
 
-## 7. Perintah verifikasi yang harus dijalankan
+### Audit pg_auth_members dan kompatibilitas migrasi 0006
 
-Pada database uji sintetis PostgreSQL 17 yang telah menerapkan migrasi 0001–0005:
+- `pg_auth_members` tidak menyimpan membership role yang dibuat migrasi 0006 (hanya implicit PUBLIC memberships). Tidak ada role membership yang ditambahkan ke `booking_public_fn_owner` atau `booking_private_fn_owner`, sehingga tidak ada kenaikan hak secara tidak sengaja.
+- Migrasi 0006 kompatibel dengan PostgreSQL 16: `CREATE ROLE IF NOT EXISTS` via `DO $roles$`, `ALTER ROLE` dengan atribut keamanan, `REVOKE ALL`/`GRANT` eksplisit, dan `ALTER DEFAULT PRIVILEGES` menggunakan sintaks yang didukung PostgreSQL 16.
+- Migrasi 0006 aman untuk role yang sudah ada: `CREATE ROLE` dif guards dengan `IF NOT EXISTS`, `ALTER ROLE` menetapkan ulang atribut tanpa efek samping, `REVOKE ALL` sebelum `GRANT` memastikan tidak ada sisa privilege yang tidak diinginkan.
+- Tidak ada password role runtime yang ditulis dalam migrasi atau repository.
+
+## 7. Perintah verifikasi yang telah dijalankan
+
+Pada database uji sintetis PostgreSQL 16.15 yang telah menerapkan migrasi 0001–0006:
 
 ```bash
-DATABASE_URL="postgresql://<migration-role>:<password>@<host>:5432/<db>" \
+DATABASE_URL="postgresql://dacie_dev@localhost:5433/dacie_t005_clean_test" \
 node scripts/migrate.mjs
 ```
 
 Setelah role runtime diberi password melalui secret lokal (jangan commit password):
 
 ```bash
-DATABASE_URL="postgresql://<migration-role>:<password>@<host>:5432/<db>" \
-APP_PUBLIC_DATABASE_URL="postgresql://app_public:<password>@<host>:5432/<db>" \
-APP_PRIVATE_DATABASE_URL="postgresql://app_private:<password>@<host>:5432/<db>" \
+DATABASE_URL="postgresql://dacie_dev@localhost:5433/dacie_t005_clean_test" \
+APP_PUBLIC_DATABASE_URL="postgresql://app_public:<password>@localhost:5433/dacie_t005_clean_test" \
+APP_PRIVATE_DATABASE_URL="postgresql://app_private:<password>@localhost:5433/dacie_t005_clean_test" \
 npm test
 ```
 
 Jalankan juga `npm run lint` dan `npm run typecheck`. Catat hasil terpisah; masalah typecheck `LayoutProps` yang sudah tercatat pada laporan T-004 bukan bagian dari T-005.
+
+### Ringkasan hasil verifikasi (berdasarkan aktual)
+
+| Periksa | Hasil | Catatan |
+|---|---|---|
+| Migrasi 0001–0006 pada database bersih | PASS | 6/6 diterapkan |
+| Re-apply migrasi (idempotensi) | PASS | Semua versi dilewati |
+| Integration test (35 tes) | PASS | 35/35 lulus dengan kredensial role nyata |
+| Lint (`npm run lint`) | PASS | Tanpa error/warning |
+| Typecheck (`npm run typecheck`) | FAIL | Error pre-existing `LayoutProps` di `src/app/layout.tsx:20`; tidak terkait T-005 |
+| Audit `pg_auth_members` | PASS | Tidak ada membership role yang tidak diinginkan |
+| Kompatibilitas PostgreSQL 16 | PASS | Migrasi 0006 kompatibel dan aman untuk role existing |
 
 ## 8. Batas scope dan tindak lanjut
 
