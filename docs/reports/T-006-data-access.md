@@ -10,7 +10,7 @@
 | Base branch | `main` |
 | SHA base | `184b256` |
 | SHA verifikasi kode | `5b48ff019fec414367a85e7745e46198f602f7b7` |
-| SHA final branch | `d54e5a7564786c8b147836c07b8a6b7710f97eeb` |
+| SHA kode final yang diverifikasi (sebelum commit koreksi dokumen) | `d54e5a7564786c8b147836c07b8a6b7710f97eeb` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Status push | Berhasil |
 | Laporan | `docs/reports/T-006-data-access.md` |
@@ -103,7 +103,7 @@ Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node
 ```text
 Push: berhasil
 Branch: agent/T-006-data-access
-SHA: d54e5a7564786c8b147836c07b8a6b7710f97eeb
+SHA kode final yang diverifikasi: d54e5a7564786c8b147836c07b8a6b7710f97eeb
 Commit: docs(report): sinkronisasi laporan verifikasi akhir T-006 dan regression test
 Laporan: docs/reports/T-006-data-access.md
 ```
