@@ -8,6 +8,8 @@ Perbaikan audit runtime: build awal gagal karena kedua service memiliki blok `bu
 
 Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker Engine dan Docker Compose. Tidak ada credential atau secret yang ditampilkan pada laporan ini.
 
+**Batas verifikasi:** `scripts/verify.sh`, secret scan formal, dan audit dependency formal **belum tersedia** karena menunggu T-007. Ketiganya tidak dijalankan pada T-002 dan **tidak diklaim lulus**. Pemeriksaan yang benar-benar dijalankan pada T-002 adalah pengujian Docker Compose, lint, typecheck, build aplikasi, smoke test mode, inspeksi konfigurasi, dan `git diff --check`.
+
 ## Daftar file berubah
 
 | File | Perubahan |
@@ -30,6 +32,8 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 - Docker Compose: `2.40.3+ds1-0ubuntu1~24.04.1`
 - SHA commit kode: `da5a520bfa863596e43d54f678881790285aeb0a`
 - SHA perbaikan compose: `a2d94774be4cb693cb3a7da7f73b76c30f37ddd1`
+- SHA commit laporan runtime: `0b30c40ea9e393a7b245b96545a2be8bf973d428`
+- SHA dasar perbaikan dokumentasi ini: `0b30c40ea9e393a7b245b96545a2be8bf973d428`
 
 ## Perintah yang dijalankan
 
@@ -66,8 +70,11 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 ## Hasil scripts/verify.sh
 
 - Perintah: `scripts/verify.sh`
-- Hasil: script belum tersedia pada branch dasar (scope T-007).
+- Hasil: **tidak tersedia** pada branch dasar (scope T-007). Script tidak dijalankan.
 - Exit code: N/A (tidak dijalankan)
+- Secret scan formal: **tidak tersedia/tidak dijalankan** (menunggu T-007). Tidak ada klaim lulus.
+- Audit dependency formal: **tidak tersedia/tidak dijalankan** (menunggu T-007). Tidak ada klaim lulus.
+- Bukti pengganti yang benar-benar dijalankan: `npm run lint`, `npm run typecheck`, build aplikasi, smoke test mode, pengujian Docker Compose, dan `git diff --check`. Bukti tersebut bukan pengganti `scripts/verify.sh`.
 
 ## Kriteria penerimaan
 
@@ -94,7 +101,7 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 
 ## Masalah yang tersisa
 
-- `scripts/verify.sh` belum tersedia; secret scan dan audit dependency formal belum dijalankan (scope T-007).
+- `scripts/verify.sh` belum tersedia (scope T-007); karena itu secret scan formal dan audit dependency formal juga belum dijalankan dan tidak diklaim lulus.
 - Validasi environment per mode dan pemisahan kredensial aplikasi belum diimplementasikan (scope T-003).
 - Role database `app_public`/`app_private` dan migrasi schema belum ada (scope T-004/T-005).
 - Data sintetis `smoke_persistence` hanya berada pada volume development lokal dan tidak termasuk seed proyek.
@@ -118,7 +125,9 @@ Seluruh pengujian Docker wajib dijalankan pada lingkungan yang memiliki Docker E
 ## Git
 
 - Branch: `agent/T-002-dev-compose`
-- SHA commit kode: `da5a520bfa863596e43d54f678881790285aeb0a`
-- Commit: `feat(compose): add development stack for both app modes`
+- Riwayat commit T-002:
+  - `da5a520bfa863596e43d54f678881790285aeb0a` — `feat(compose): add development stack for both app modes` (kode awal)
+  - `a2d94774be4cb693cb3a7da7f73b76c30f37ddd1` — `fix(compose): build one image for both app services` (perbaikan image)
+  - `0b30c40ea9e393a7b245b96545a2be8bf973d428` — `docs(report): record T-002 runtime verification` (laporan runtime)
+- Commit dokumentasi ini: SHA terbaru diberikan pada pesan chat setelah push dan dapat diperiksa dengan `git log -1`.
 - Push: berhasil (branch `agent/T-002-dev-compose` ke origin)
-- SHA laporan: `a2d94774be4cb693cb3a7da7f73b76c30f37ddd1`
