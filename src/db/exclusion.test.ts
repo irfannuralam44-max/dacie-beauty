@@ -190,6 +190,10 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
     const c2 = await connect();
     await c1.query("SET statement_timeout = '8s'");
     await c2.query("SET statement_timeout = '8s'");
+    // Error events on pg client accompany promise rejections for query errors;
+    // kami menangani lewak promise, sehingga biarkan error event tidak uncaught.
+    c1.on('error', () => {});
+    c2.on('error', () => {});
     try {
       await c1.query('BEGIN');
       await c2.query('BEGIN');
@@ -210,28 +214,32 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Tiga', 'user_tiga', 'hash_tiga', 'active')"
       );
 
-      // Verifikasi bahwa c2 menunggu advisory lock melalui pg_stat_activity (best effort, beberapa kali coba).
+      // Verifikasi bahwa c2 menunggu advisory lock melalui pg_stat_activity (banyak percobaan).
+      // Ini adalah assertion fatal: jika c2 tidak terlihat menunggu lock, uji gagal.
       let terlihatMenunggu = false;
       for (let i = 0; i < 30; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         const activity = await c1.query(
-          'SELECT wait_event_type FROM pg_stat_activity WHERE pid = $1',
+          'SELECT wait_event_type, wait_event FROM pg_stat_activity WHERE pid = $1',
           [pidC2]
         );
-        if (activity.rows.length === 1 && activity.rows[0].wait_event_type === 'Lock') {
+        if (
+          activity.rows.length === 1 &&
+          activity.rows[0].wait_event_type === 'Lock' &&
+          activity.rows[0].wait_event === 'advisory'
+        ) {
           terlihatMenunggu = true;
           break;
         }
       }
-      // Catat tetapi jangan gagal di sini: c1 tetap harus commit untuk melepaskan lock.
+      // Jalankan commit c1 dalam finally agar koneksi c2 selalu dilepaskan,
+      // meski assertion lock di bawah gagal.
       try {
-        assert.ok(terlihatMenunggu, `c2 seharusnya terlihat menunggu advisory lock di pg_stat_activity`);
-      } catch {
-        // Non-fatal: bukti utama adalah c2 mendapat P0001 setelah c1 commit di bawah.
+        assert.ok(terlihatMenunggu, `c2 harus terlihat menunggu advisory lock (wait_event_type=Lock, wait_event=advisory) di pg_stat_activity`);
+        await c1.query('COMMIT');
+      } finally {
+        await c1.query('COMMIT').catch(() => {});
       }
-
-      // c1 melepaskan advisory lock dengan commit.
-      await c1.query('COMMIT');
 
       // Setelah c1 commit, c2 dilanjutkan dan harus ditolak oleh pemicu trigger
       // karena akun aktif sudah mencapai dua (User Satu + User Dua).
