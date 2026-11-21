@@ -19,6 +19,20 @@ import { parseServerEnv } from "../env/schema.ts";
 
 let pool: Pool | undefined;
 
+/**
+ * Membersihkan pesan error database sebelum dilewatkan ke pemanggil.
+ *
+ * Mencegah bocornya detail internal (nama skema, tabel, kolom, kode status
+ * SQL, dsb.) ke respons publik. Error asli tetap tersedia melalui
+ * `error.cause` untuk diagnostik sisi server.
+ */
+function sanitizeDatabaseError(error: unknown): Error {
+  if (error instanceof Error) {
+    return new Error("Terjadi kesalahan database", { cause: error });
+  }
+  return new Error("Terjadi kesalahan database", { cause: String(error) });
+}
+
 function createPool(connectionString: string): Pool {
   return new Pool({ connectionString });
 }
@@ -53,6 +67,8 @@ export async function query<T extends Record<string, unknown> = Record<string, u
       return await client.query<T>(text);
     }
     return await client.query<T>(text, params as unknown[]);
+  } catch (error) {
+    throw sanitizeDatabaseError(error);
   } finally {
     client.release();
   }
@@ -69,7 +85,7 @@ export async function transaction<T>(
     return result;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
-    throw error;
+    throw sanitizeDatabaseError(error);
   } finally {
     client.release();
   }

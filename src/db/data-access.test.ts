@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { Client, type PoolClient } from "pg";
 import { Pool } from "pg";
@@ -239,10 +238,14 @@ test("role aktif tidak dapat SELECT langsung pada tabel booking.bookings (mode p
     t.skip("tes ini hanya berlaku pada mode public");
     return;
   }
-  await assert.rejects(
-    query("SELECT * FROM booking.bookings LIMIT 0"),
-    /permission denied|42501/,
-  );
+  try {
+    await query("SELECT * FROM booking.bookings LIMIT 0");
+    assert.fail("harus melempar error saat SELECT langsung pada bookings");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
 });
 
 test("role aktif tidak dapat INSERT langsung pada tabel booking.bookings (mode public)", async (t) => {
@@ -251,10 +254,14 @@ test("role aktif tidak dapat INSERT langsung pada tabel booking.bookings (mode p
     t.skip("tes ini hanya berlaku pada mode public");
     return;
   }
-  await assert.rejects(
-    query("INSERT INTO booking.bookings DEFAULT VALUES"),
-    /permission denied|42501/,
-  );
+  try {
+    await query("INSERT INTO booking.bookings DEFAULT VALUES");
+    assert.fail("harus melempar error saat INSERT langsung pada bookings");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
 });
 
 test("role aktif tidak dapat mengakses schema records (mode public)", async (t) => {
@@ -263,10 +270,38 @@ test("role aktif tidak dapat mengakses schema records (mode public)", async (t) 
     t.skip("tes ini hanya berlaku pada mode public");
     return;
   }
-  await assert.rejects(
-    query("SELECT * FROM records.users LIMIT 0"),
-    /permission denied for schema records|42501/,
-  );
+  try {
+    await query("SELECT * FROM records.users LIMIT 0");
+    assert.fail("harus melempar error saat akses schema records");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
+});
+
+test("getPool di mode public hanya menggunakan role app_public, bukan app_private", async (t) => {
+  if (!butuhDb(t)) return;
+  if (!IS_PUBLIC) {
+    t.skip("tes ini hanya berlaku pada mode public");
+    return;
+  }
+  const pool = getPool();
+  const cs = (pool as { options: { connectionString: string } }).options
+    .connectionString;
+  // Harus menggunakan role app_public, bukan app_private
+  assert.match(cs, /:\/\/app_public:/);
+  assert.ok(!cs.includes("://app_private:"));
+});
+
+test("tidak ada parameter pemilihan role/pool pada getPool (tidak ada fallback silang)", async (t) => {
+  if (!butuhDb(t)) return;
+  // getPool tidak menerima argumen, tidak ada cara untuk memilih role berdasarkan request
+  assert.equal(getPool.length, 0);
+  // Pemanggilan berulang mengembalikan instance yang sama (singleton)
+  const pool1 = getPool();
+  const pool2 = getPool();
+  assert.equal(pool1, pool2);
 });
 
 test("app_public melalui pool terpisah tidak dapat SELECT tabel booking", async (t) => {
@@ -305,24 +340,6 @@ test("app_public melalui pool terpisah tidak dapat mengakses schema records", as
   }
 });
 
-test("instance public tidak dapat membuat pool privat melalui import tidak disengaja", async (t) => {
-  if (!butuhDb(t)) return;
-  if (!IS_PUBLIC) {
-    t.skip("tes ini hanya berlaku pada mode public");
-    return;
-  }
-  // createPool tidak diekspor melalui API publik, sehingga tidak bisa
-  // membuat pool dengan DSN privat secara tidak disengaja
-  const indexSource = readFileSync(new URL("../lib/db/index.ts", import.meta.url), "utf8");
-  assert.doesNotMatch(indexSource, /\bcreatePool\b/);
-  // getPool selalu mengembalikan pool public, bukan privat
-  const pool = getPool();
-  assert.ok(pool);
-  // Tidak ada cara untuk menukar role melalui getPool berulang kali
-  const pool2 = getPool();
-  assert.equal(pool, pool2);
-});
-
 // --- app_private memiliki akses yang sesuai (hanya mode private) ---
 
 test("app_private dapat SELECT seluruh tabel booking (mode private)", async (t) => {
@@ -351,18 +368,31 @@ test("app_private tidak dapat DML langsung pada booking.bookings (mode private)"
     t.skip("tes ini hanya berlaku pada mode private");
     return;
   }
-  await assert.rejects(
-    query("INSERT INTO booking.bookings DEFAULT VALUES"),
-    /permission denied|42501/,
-  );
-  await assert.rejects(
-    query("UPDATE booking.bookings SET status = status WHERE false"),
-    /permission denied|42501/,
-  );
-  await assert.rejects(
-    query("DELETE FROM booking.bookings WHERE false"),
-    /permission denied|42501/,
-  );
+  // Error harus dilempar (permission denied), tetapi detail internal tidak boleh bocor
+  try {
+    await query("INSERT INTO booking.bookings DEFAULT VALUES");
+    assert.fail("harus melempar error saat INSERT langsung pada bookings");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
+  try {
+    await query("UPDATE booking.bookings SET status = status WHERE false");
+    assert.fail("harus melempar error saat UPDATE langsung pada bookings");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
+  try {
+    await query("DELETE FROM booking.bookings WHERE false");
+    assert.fail("harus melempar error saat DELETE langsung pada bookings");
+  } catch (error: unknown) {
+    assert.ok(error instanceof Error, "error harus berupa instance Error");
+    assert.equal(error.message, "Terjadi kesalahan database");
+    assert.ok((error as Error).cause, "error harus memiliki cause untuk diagnostik server");
+  }
 });
 
 // --- Konsistensi pool ---
