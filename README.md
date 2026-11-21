@@ -97,6 +97,8 @@ docker compose build
 docker compose up -d
 ```
 
+Image `dacie-beauty:dev` dibangun sekali melalui service `web-public`; `web-private` memakai image yang sama.
+
 Akses:
 
 - Public: `http://127.0.0.1:3001`

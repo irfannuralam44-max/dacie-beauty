@@ -2,9 +2,6 @@ name: dacie-beauty-dev
 
 x-app-image: &app-image
   image: dacie-beauty:dev
-  build:
-    context: .
-    dockerfile: Dockerfile
   restart: unless-stopped
   networks:
     - internal
@@ -30,6 +27,9 @@ services:
 
   web-public:
     <<: *app-image
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       APP_MODE: public
     ports:
