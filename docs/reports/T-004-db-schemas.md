@@ -10,7 +10,10 @@
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
 | SHA commit implementasi | `dd87fddd5552aec3fb5a5c7404b0d129012f2339` |
-| Commit message | `fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif` |
+| SHA revisi tes | `07a2e32ce1f4f0f1b68bf7ec3171f44871eeff5e` |
+| SHA snapshot dokumentasi sebelumnya | `613ea74e7ef30a6a676f55ee18fd97a6397a75ea` |
+| Commit message implementasi | `fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif` |
+| Commit message revisi tes | `fix(db): assertion lock pemicu dua akun aktif setelah commit c1 dan hasil c2` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
@@ -134,7 +137,7 @@ Kriteria yang diuji semua **PASS** dengan bukti tes integrasi terhadap PostgreSQ
 ```text
 Push: berhasil
 Branch: agent/T-004-db-schemas
-SHA: dd87fddd5552aec3fb5a5c7404b0d129012f2339
-Commit: fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif
+SHA: 07a2e32ce1f4f0f1b68bf7ec3171f44871eeff5e
+Commit: fix(db): assertion lock pemicu dua akun aktif setelah commit c1 dan hasil c2
 Laporan: docs/reports/T-004-db-schemas.md
 ```
