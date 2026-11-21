@@ -6,6 +6,8 @@
  * binding dan tidak menyusun SQL secara mentah.
  */
 
+import "server-only";
+
 import { type QueryResult } from "pg";
 
 import { query, transaction } from "./pool.ts";
