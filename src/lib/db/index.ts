@@ -12,9 +12,6 @@ import "server-only";
 
 import {
   closePool,
-  getPool,
-  isPrivatePool,
-  isPublicPool,
   query,
   transaction,
 } from "./pool.ts";
@@ -23,9 +20,6 @@ import type { QueryResult } from "pg";
 
 export {
   closePool,
-  getPool,
-  isPrivatePool,
-  isPublicPool,
   query,
   transaction,
 };
