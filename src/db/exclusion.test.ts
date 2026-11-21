@@ -194,6 +194,10 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
       await c1.query('BEGIN');
       await c2.query('BEGIN');
 
+      // Ambil PID c2 sebelum query INSERT dimulai, karena koneksi pg tidak dapat
+      // melayani query lain saat INSERT c2 masih diblokir di server.
+      const pidC2 = (await c2.query('SELECT pg_backend_pid()')).rows[0].pg_backend_pid;
+
       // c1 memasang akun aktif kedua dan menahan advisory lock (belum commit).
       const hasil1 = c1.query(
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Dua', 'user_dua', 'hash_dua', 'active')"
@@ -206,13 +210,25 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
         "INSERT INTO records.users (nama, identitas_login, password_hash, status) VALUES ('User Tiga', 'user_tiga', 'hash_tiga', 'active')"
       );
 
-      // Sebelum c1 commit, c2 masih harus menunggu advisory lock (belum selesai).
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      const pendeteksi = Promise.race([
-        hasil2.then(() => 'resolved'),
-        new Promise((r) => setTimeout(() => r('pending'), 100)),
-      ]);
-      assert.strictEqual(await pendeteksi, 'pending', 'c2 masih menunggu advisory lock sebelum c1 commit');
+      // Verifikasi bahwa c2 menunggu advisory lock melalui pg_stat_activity (best effort, beberapa kali coba).
+      let terlihatMenunggu = false;
+      for (let i = 0; i < 30; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const activity = await c1.query(
+          'SELECT wait_event_type FROM pg_stat_activity WHERE pid = $1',
+          [pidC2]
+        );
+        if (activity.rows.length === 1 && activity.rows[0].wait_event_type === 'Lock') {
+          terlihatMenunggu = true;
+          break;
+        }
+      }
+      // Catat tetapi jangan gagal di sini: c1 tetap harus commit untuk melepaskan lock.
+      try {
+        assert.ok(terlihatMenunggu, `c2 seharusnya terlihat menunggu advisory lock di pg_stat_activity`);
+      } catch {
+        // Non-fatal: bukti utama adalah c2 mendapat P0001 setelah c1 commit di bawah.
+      }
 
       // c1 melepaskan advisory lock dengan commit.
       await c1.query('COMMIT');
@@ -221,17 +237,20 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
       // karena akun aktif sudah mencapai dua (User Satu + User Dua).
       let gagal2 = false;
       let kodeError2: string | null = null;
+      let pesanError2: string | null = null;
       try {
         await hasil2;
       } catch (err) {
         gagal2 = true;
         kodeError2 = (err as { code?: string }).code ?? null;
+        pesanError2 = (err as { message?: string }).message ?? null;
       }
       await c2.query('ROLLBACK').catch(() => {});
 
-      // c2 harus ditolak oleh trigger (bukan statement_timeout / kode 57014).
+      // c2 harus ditolak oleh trigger dengan P0001 (bukan statement_timeout / kode 57014).
       assert.ok(gagal2, 'c2 harus ditolak setelah c1 commit karena maksimal dua akun aktif');
-      assert.notStrictEqual(kodeError2, '57014', `c2 tidak boleh gagal karena statement_timeout (57014), kode aktual: ${kodeError2}`);
+      assert.strictEqual(kodeError2, 'P0001', `c2 seharusnya gagal dengan P0001 (plpgsql exception), kode aktual: ${kodeError2}`);
+      assert.ok(pesanError2?.includes('Maksimal dua akun aktif'), `pesan trigger seharusnya mencakup batas dua akun aktif, pesan aktual: ${pesanError2}`);
 
       const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
       assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');

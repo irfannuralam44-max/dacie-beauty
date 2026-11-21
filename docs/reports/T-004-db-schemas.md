@@ -41,7 +41,7 @@ Task ini sengaja tidak mengerjakan role/privilege (`app_public`, `app_private`, 
 **File SQL berversi + skrip penerap Node.js (`pg`)**, alasan:
 - Cocok stack Next.js/Node.js yang ada; `pg` adalah driver PostgreSQL standar (lisensi MIT, terawat baik, direferensikan PRD) dan sudah diperlukan untuk lapisan data selanjutnya (T-006).
 - Tidak menambah dependensi luar eksternal ke dalam image aplikasi selain `pg` yang sudah dijamin kompatibel (Node LTS, 0 vulnerability saat `npm audit`).
-- Urutan deterministik berdasarkan nama file (`0001`..`0004`).
+- Urutan deterministik berdasarkan nama file (`0001`..`0005`).
 - Tabel pelakakan versi `booking.schema_migrations` mengetahui status migrasi yang sudah diterapkan.
 - Setiap file dijalankan dalam satu transaksi; gagal → rollback, versi tidak dicatat, dapat diulang.
 - Re-apply melewati versi yang sudah dicatat (idempoten pada tingkat file).
