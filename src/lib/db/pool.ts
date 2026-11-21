@@ -12,6 +12,8 @@
  * `server-only` ada di `index.ts`.
  */
 
+import "server-only";
+
 import { Pool, type PoolClient, type QueryResult } from "pg";
 import { parseServerEnv } from "../env/schema.ts";
 
