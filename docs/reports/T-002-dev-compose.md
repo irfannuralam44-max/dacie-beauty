@@ -101,5 +101,6 @@ Perintah Docker yang **tidak dapat dijalankan**: `docker compose config`, `docke
 
 - Branch: `agent/T-002-dev-compose`
 - SHA commit kode: `da5a520bfa863596e43d54f678881790285aeb0a`
+- SHA laporan: `275de36a05baa032aed0740c613f3f72c2601ef8`
 - Commit: `feat(compose): add development stack for both app modes`
-- Push: (akan diisi setelah push)
+- Push: berhasil (branch `agent/T-002-dev-compose` ke origin)
