@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `<diisi setelah commit>` |
-| Commit message | `<diisi setelah commit>` |
+| SHA commit implementasi | `9f731f2167d7eb0b79029d568676c570f718154b` |
+| Commit message | `feat(db): initial PostgreSQL schemas and versioned migrations` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | `<diisi setelah push>` |
 
@@ -131,9 +131,9 @@ Kriteria yang diuji semua **PASS** dengan bukti tes integrasi terhadap PostgreSQ
 ## 12. Git
 
 ```text
-Push: <diisi setelah push>
+Push: <akan diisi setelah push>
 Branch: agent/T-004-db-schemas
-SHA: <diisi setelah commit>
-Commit: <diisi setelah commit>
+SHA: 9f731f2167d7eb0b79029d568676c570f718154b
+Commit: feat(db): initial PostgreSQL schemas and versioned migrations
 Laporan: docs/reports/T-004-db-schemas.md
 ```
