@@ -160,6 +160,18 @@ test("public mode rejects a database URL without a database name", () => {
   );
 });
 
+test("public mode rejects a database URL with the wrong role", () => {
+  for (const username of ["postgres", "app_private"]) {
+    expectValidationError(
+      {
+        ...VALID_PUBLIC_ENV,
+        APP_PUBLIC_DATABASE_URL: `postgresql://${username}:change-me-local-only@db:5432/dacie_dev`,
+      },
+      [new RegExp(`APP_PUBLIC_DATABASE_URL must use the app_public database role`)],
+    );
+  }
+});
+
 test("public mode rejects a CAPTCHA_SECRET that is too short", () => {
   expectValidationError(
     {
@@ -188,6 +200,18 @@ test("private mode requires SESSION_SECRET", () => {
     },
     [/SESSION_SECRET is required when APP_MODE=private/],
   );
+});
+
+test("private mode rejects a database URL with the wrong role", () => {
+  for (const username of ["postgres", "app_public"]) {
+    expectValidationError(
+      {
+        ...VALID_PRIVATE_ENV,
+        APP_PRIVATE_DATABASE_URL: `postgresql://${username}:change-me-local-only@db:5432/dacie_dev`,
+      },
+      [new RegExp(`APP_PRIVATE_DATABASE_URL must use the app_private database role`)],
+    );
+  }
 });
 
 test("private mode rejects a SESSION_SECRET that is too short", () => {

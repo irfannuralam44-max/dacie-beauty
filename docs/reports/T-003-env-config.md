@@ -4,7 +4,7 @@
 
 Ditambahkan modul validasi environment server terpusat (`src/lib/env/schema.ts` dan `src/lib/env/server.ts`) yang memvalidasi `APP_MODE` dan variabel wajib berdasarkan mode. Modul pembacaan `process.env` ditandai `server-only` agar tidak masuk ke client bundle. `instrumentation.ts` menjalankan validasi saat startup (dilewati pada fase build agar satu build tetap dapat melayani kedua mode). `src/lib/app-mode.ts` diarahkan ke parser terpusat. `/api/health` mengembalikan 503 bila konfigurasi tidak sah.
 
-Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` dan `CAPTCHA_SECRET`; gagal startup jika `APP_PRIVATE_DATABASE_URL` atau `SESSION_SECRET` berisi nilai. Mode private hanya menerima `APP_PRIVATE_DATABASE_URL` dan `SESSION_SECRET`; gagal startup jika `APP_PUBLIC_DATABASE_URL` atau `CAPTCHA_SECRET` berisi nilai. Variabel wajib yang hilang/kosong, `APP_MODE` tidak valid, atau DSN PostgreSQL yang salah format menggagalkan startup. Pesan error hanya memuat nama variabel dan aturan, tidak pernah nilainya.
+Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` (DSN dengan role `app_public`) dan `CAPTCHA_SECRET`; gagal startup jika `APP_PRIVATE_DATABASE_URL` atau `SESSION_SECRET` berisi nilai, atau DSN memakai role lain (misalnya `postgres` atau `app_private`). Mode private hanya menerima `APP_PRIVATE_DATABASE_URL` (DSN dengan role `app_private`) dan `SESSION_SECRET`; gagal startup jika `APP_PUBLIC_DATABASE_URL` atau `CAPTCHA_SECRET` berisi nilai, atau DSN memakai role lain (misalnya `postgres` atau `app_public`). Variabel wajib yang hilang/kosong, `APP_MODE` tidak valid, atau DSN PostgreSQL yang salah format menggagalkan startup. Pesan error hanya memuat nama variabel dan aturan, tidak pernah nilainya.
 
 `.env.example`, README, dan Compose diperbarui dengan nama variabel dan placeholder dummy. Compose memberikan variabel mode yang sesuai ke masing-masing service; `web-public` tidak menerima credential/secret privat. Ditambahkan 24 unit test konfigurasi valid/hilang/salah format/pencampuran secret. `npm test` ditambahkan.
 
@@ -47,7 +47,7 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` dan `CAPTCHA_SECRET`; gagal
 | `git switch -c agent/T-003-env-config origin/agent/T-003-env-config` | Branch dibuat dari `44a38a9` | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
 | `npm run typecheck` | Tanpa error | 0 |
-| `npm test` | 24/24 lulus | 0 |
+| `npm test` | 26/26 lulus | 0 |
 | `env -u APP_MODE npm run build` | Build berhasil; satu build untuk kedua mode | 0 |
 | Pemeriksaan client bundle | Sentinel dummy tidak ditemukan di `.next/static` | 0 (grep tidak menemukan) |
 | `./scripts/smoke-app-modes.sh` | Public/private valid lulus; invalid, missing, forbidden fail-closed | 0 |
@@ -83,7 +83,7 @@ Mode public hanya menerima `APP_PUBLIC_DATABASE_URL` dan `CAPTCHA_SECRET`; gagal
 6. **Secret tidak masuk ke client bundle** — **LULUS (bukti statis dan build).** `server.ts` memakai `import "server-only"`; unit test source guard lulus; grep sentinel dummy pada `.next/static` tidak ditemukan; tidak ada variabel `NEXT_PUBLIC_` secret.
 7. **Error tidak mencetak nilai secret** — **LULUS.** Unit test `validation errors never include secret values` lulus; pemeriksaan log startup menunjukkan hanya nama variabel; sentinel secret tidak muncul.
 8. **`.env.example` hanya berisi placeholder dummy** — **LULUS.** Semua nilai adalah dummy (`change-me-local-only`, `dacie_dev`, DSN dummy); tidak ada secret nyata.
-9. **Unit test mencakup konfigurasi valid, hilang, dan salah format** — **LULUS.** 24/24 lulus: valid public/private, missing required, invalid `APP_MODE`, DSN protocol/malformed/credential/name, secret terlalu pendek, pencampuran secret antar-mode, empty forbidden, guard source.
+9. **Unit test mencakup konfigurasi valid, hilang, dan salah format** — **LULUS.** 26/26 lulus: valid public/private, missing required, invalid `APP_MODE`, DSN protocol/malformed/credential/name/role, secret terlalu pendek, pencampuran secret antar-mode, empty forbidden, guard source.
 10. **Laporan menyebutkan bukti dan hal yang belum terverifikasi** — **LULUS.** Bagian perintah, `scripts/verify.sh`, dan masalah tersisa mendokumentasikan hal yang belum terverifikasi.
 
 ## Keputusan atau asumsi

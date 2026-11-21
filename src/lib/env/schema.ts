@@ -93,7 +93,12 @@ export function parseServerEnv(
       issues,
     );
     if (appPublicDatabaseUrl !== "") {
-      validatePostgresUrl("APP_PUBLIC_DATABASE_URL", appPublicDatabaseUrl, issues);
+      validatePostgresUrl(
+        "APP_PUBLIC_DATABASE_URL",
+        appPublicDatabaseUrl,
+        "app_public",
+        issues,
+      );
     }
 
     const captchaSecret = readRequired(
@@ -131,6 +136,7 @@ export function parseServerEnv(
     validatePostgresUrl(
       "APP_PRIVATE_DATABASE_URL",
       appPrivateDatabaseUrl,
+      "app_private",
       issues,
     );
   }
@@ -197,6 +203,7 @@ function rejectForbidden(
 function validatePostgresUrl(
   name: string,
   value: string,
+  expectedUsername: string,
   issues: string[],
 ): void {
   let parsed: URL;
@@ -219,6 +226,10 @@ function validatePostgresUrl(
 
   if (parsed.username === "") {
     issues.push(`${name} must include a database username.`);
+  } else if (parsed.username !== expectedUsername) {
+    issues.push(
+      `${name} must use the ${expectedUsername} database role.`,
+    );
   }
 
   if (parsed.password === "") {
