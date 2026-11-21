@@ -9,8 +9,8 @@
 | Branch | `agent/T-004-db-schemas` |
 | Base branch | `main` |
 | SHA commit dasar | `7b1f8cd1d1746f2595a05b2bea792e666ff412f5` |
-| SHA commit implementasi | `58c5f0a0f7006268ce37d47829450fe4f2e4648b` |
-| Commit message | `fix(db): bukti lock-wait pemicu dua akun aktif dan sinkronisasi dokumentasi migrasi` |
+| SHA commit implementasi | `ad2e923f826bbda450b42c97a3e46c5f9068de40` |
+| Commit message | `fix(db): bukti lock-wait advisory pada tes concurrency pemicu dua akun aktif` |
 | Tanggal pengerjaan | 2026-11-21 |
 | Status push | berhasil |
 
