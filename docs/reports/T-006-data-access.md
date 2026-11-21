@@ -9,7 +9,7 @@
 | Branch | `agent/T-006-data-access` |
 | Base branch | `main` |
 | SHA base | `184b256` |
-| SHA verifikasi | `64a99b0e6ef38aac9c903ddee6610b6cd3eb40a6` |
+| SHA verifikasi | `b0caba83fdf9986faf410daec58e82594ae583f0` |
 | Status implementasi | Selesai; verifikasi lokal lulus |
 | Laporan | `docs/reports/T-006-data-access.md` |
 
@@ -23,13 +23,14 @@ Bergantung pada T-003 (validasi environment) dan T-005 (role database dan privil
 
 | File | Status | Tujuan |
 |---|---|---|
-| `src/lib/db/pool.ts` | Dibuat/revisi | Pembuatan dan pengelolaan `pg.Pool` per proses, pemilihan pool berdasarkan `APP_MODE`, query berparameter, transaksi dengan rollback otomatis, tanpa `server-only` (internal module) |
-| `src/lib/db/client.ts` | Dibuat/revisi | Wrapper query berparameter: `select`, `selectOne`, `modify`, tanpa `server-only` (internal module) |
-| `src/lib/db/index.ts` | Dibuat/revisi | Ekspor publik lapisan akses data, dengan `server-only` (public API protection) |
+| `src/lib/db/pool.ts` | Dibuat/revisi | Pembuatan dan pengelolaan `pg.Pool` per proses, pemilihan pool berdasarkan `APP_MODE`, query berparameter, transaksi dengan rollback otomatis, dengan `server-only` boundary |
+| `src/lib/db/client.ts` | Dibuat/revisi | Wrapper query berparameter: `select`, `selectOne`, `modify`, dengan `server-only` boundary |
+| `src/lib/db/index.ts` | Dibuat/revisi | Ekspor publik lapisan akses data, dengan `server-only`, tanpa `getPool`/`isPrivatePool`/`isPublicPool` |
 | `src/lib/db/pool.test.ts` | Dibuat/revisi | Unit test pemilihan pool, konsistensi role, tidak ada fallback, negative test API publik |
 | `src/db/data-access.test.ts` | Dibuat/revisi | Integration test query, select, transaction rollback, pemisahan role (public/private), negative test import tidak disengaja |
 | `docs/database/panduan-migrasi.md` | Diubah | Dokumentasi lapisan akses data dan aturan keamanan |
 | `src/lib/env/server.ts` | Diubah | Perbaikan import extension `.ts` |
+| `package.json` | Diubah | Script test menggunakan `--conditions=react-server` untuk pengujian Node dengan modul server-only |
 
 ## 4. Acceptance criteria
 
@@ -51,9 +52,9 @@ Database uji: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 
 | `node scripts/migrate.mjs` (apply) | 6/6 migrasi diterapkan | 0 |
 | `node scripts/migrate.mjs` (re-apply) | Semua dilewati (idempoten) | 0 |
 | `npm run lint` | Tanpa error/warning | 0 |
-| `npm run typecheck` | FAIL: `src/app/layout.tsx(20,50)` error TS2304 — `LayoutProps` tidak terdefinisi/diimpor. Masalah pre-existing pada `main`, bukan regresi T-006. | 1 |
-| `node --test "src/**/*.test.ts"` (mode private, DATABASE_URL disetel) | 53/53 lulus, 7 dilewati | 0 |
-| `node --test "src/**/*.test.ts"` (mode public, DATABASE_URL disetel) | 51/51 lulus, 9 dilewati | 0 |
+| `npm run typecheck` | FAIL: `src/app/layout.tsx(20,50)` error TS2304 — `LayoutProps` tidak terdefinisi/diimpor. Masalah pre-existing pada `main`, bukan regresi T-006. | 2 |
+| `npm test` (mode private, DATABASE_URL disetel) | 53 lulus, 0 gagal, 7 skip | 0 |
+| `npm test` (mode public, DATABASE_URL disetel) | 51 lulus, 0 gagal, 9 skip | 0 |
 
 `scripts/verify.sh`: belum tersedia (scope T-007), tidak dibuat pengganti.
 
@@ -63,12 +64,15 @@ Database uji: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 
 - **Integration test data access** (`src/db/data-access.test.ts`): 15/15 lulus dalam mode private, 12/12 lulus dalam mode public. Memverifikasi query berparameter, select/selectOne, transaksi commit melalui wrapper `transaction()`, rollback membatalkan semua data saat query gagal, koneksi dapat digunakan kembali setelah rollback, penolakan DML langsung pada `bookings`, penolakan akses schema `records` oleh `app_public`, SELECT seluruh tabel booking oleh `app_private`, tidak ada pembuatan pool privat melalui import tidak disengaja.
 - **Tes yang ada (T-004, T-005)**: Semua tetap lulus (exclusion constraint, role/privilege, validasi environment).
 
+Semua tes dijalankan menggunakan `npm test` dengan kondisi `react-server` (`node --conditions=react-server`), sehingga modul yang ditandai `server-only` dapat diimpor dalam pengujian Node.js tanpa menghapus proteksi server-only untuk produksi.
+
 ## 7. Keputusan dan asumsi
 
 - Memilih `pg` (Node.js PostgreSQL driver, MIT) sebagai driver untuk pool; sudah tersedia sebagai dependency dari T-004.
-- `server-only` hanya dipasang di `index.ts` (API publik) untuk mencegah impor oleh Client Component. Modul internal `pool.ts` dan `client.ts` tidak memiliki `server-only` agar dapat diimpor langsung dalam pengujian Node.js tanpa melemahkan proteksi produksi.
-- `pool.ts` dan `client.ts` membaca environment melalui `parseServerEnv` dari `schema.ts` (fungsi yang sama yang dipakai oleh `getServerEnv` di `server.ts`), bukan membaca `process.env` langsung tanpa validasi.
-- Satu pool per proses, dibuat saat primeira panggilan `getPool()`; tidak ada pool per request.
+- `server-only` dipasang pada semua modul Data Access Layer (`pool.ts`, `client.ts`, `index.ts`) untuk mencegah impor oleh Client Component.
+- Semua modul membaca environment melalui `parseServerEnv` dari `schema.ts` (fungsi yang sama yang dipakai oleh `getServerEnv` di `server.ts`), bukan membaca `process.env` langsung tanpa validasi.
+- Satu pool per proses, dibuat saat primera panggilan `getPool()`; tidak ada pool per request.
+- Script test menggunakan `--conditions=react-server` agar pengujian Node dapat mengimpor modul `server-only` tanpa menghapus proteksi produksi.
 - Password role runtime tidak ditulis dalam repository; hanya digunakan untuk pengujian lokal.
 - Typecheck error `LayoutProps` di `src/app/layout.tsx:20` adalah masalah pre-existing pada `main`, bukan regresi T-006.
 
@@ -90,9 +94,9 @@ Database uji: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) via pg_ctl, port 
 ## 10. Git
 
 ```text
-Push: berhasil
+Push: belum dilakukan
 Branch: agent/T-006-data-access
-SHA: 2feb15f6514a7a432eaf65de8f89fff831e20ff4
-Commit: docs(report): sinkronisasi SHA verifikasi akhir T-006
+SHA: b0caba83fdf9986faf410daec58e82594ae583f0
+Commit: (akan ditentukan saat commit)
 Laporan: docs/reports/T-006-data-access.md
 ```
