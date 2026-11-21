@@ -215,7 +215,8 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
       );
 
       // Verifikasi bahwa c2 menunggu advisory lock melalui pg_stat_activity (banyak percobaan).
-      // Ini adalah assertion fatal: jika c2 tidak terlihat menunggu lock, uji gagal.
+      // Hasil observasi disimpan; assertion fatal dilakukan setelah c1 commit dan c2 selesai,
+      // agar transaksi selalu dibersihkan walaupun kegagalan.
       let terlihatMenunggu = false;
       for (let i = 0; i < 30; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -232,14 +233,9 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
           break;
         }
       }
-      // Jalankan commit c1 dalam finally agar koneksi c2 selalu dilepaskan,
-      // meski assertion lock di bawah gagal.
-      try {
-        assert.ok(terlihatMenunggu, `c2 harus terlihat menunggu advisory lock (wait_event_type=Lock, wait_event=advisory) di pg_stat_activity`);
-        await c1.query('COMMIT');
-      } finally {
-        await c1.query('COMMIT').catch(() => {});
-      }
+
+      // c1 melepaskan advisory lock dengan commit.
+      await c1.query('COMMIT');
 
       // Setelah c1 commit, c2 dilanjutkan dan harus ditolak oleh pemicu trigger
       // karena akun aktif sudah mencapai dua (User Satu + User Dua).
@@ -259,6 +255,10 @@ test('pemicu maksimal dua akun aktif aman terhadap transaksi bersamaan', async (
       assert.ok(gagal2, 'c2 harus ditolak setelah c1 commit karena maksimal dua akun aktif');
       assert.strictEqual(kodeError2, 'P0001', `c2 seharusnya gagal dengan P0001 (plpgsql exception), kode aktual: ${kodeError2}`);
       assert.ok(pesanError2?.includes('Maksimal dua akun aktif'), `pesan trigger seharusnya mencakup batas dua akun aktif, pesan aktual: ${pesanError2}`);
+
+      // Bukti tegas bahwa transaksi kedua benar-benar menunggu advisory lock sebelum c1 commit,
+      // bukan gagal cepat karena statement_timeout atau alasan lain.
+      assert.ok(terlihatMenunggu, `c2 harus terlihat menunggu advisory lock (wait_event_type=Lock, wait_event=advisory) di pg_stat_activity`);
 
       const total = (await c.query("SELECT COUNT(*) n FROM records.users WHERE status = 'active'")).rows[0].n;
       assert.strictEqual(Number(total), 2, 'maksimal dua akun aktif terpenuhi setelah konkuren');
